@@ -6,7 +6,7 @@
  * @homepage https://zrcdy.dpdns.org/
  * @updateUrl https://zrcdy.dpdns.org/lx/xinghai-music-source.js
  * @feedback cdy1234561103@petalmail.com
- * @lastUpdate 2025-12-31
+ * @lastUpdate 2025-12-30
  */
 
 // ============================ 核心配置区域 ============================
