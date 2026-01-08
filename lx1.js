@@ -1,7 +1,7 @@
 /*!260102
  * @name 星海音乐源
  * @description 基于GD Studio API和TuneHub API的双引擎聚合音乐播放源，支持网易云、QQ、酷狗、酷我、咪咕五大平台
- * @version v2.2.7
+ * @version v2.2.8
  * @author 万去了了
  * @homepage https://zrcdy.dpdns.org/
  * @updateUrl https://zrcdy.dpdns.org/lx/xinghai-music-source.js
