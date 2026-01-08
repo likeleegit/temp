@@ -1,12 +1,12 @@
 /*!260102
  * @name 星海音乐源
  * @description 基于GD Studio API和TuneHub API的双引擎聚合音乐播放源，支持网易云、QQ、酷狗、酷我、咪咕五大平台
- * @version v2.2.8
+ * @version v2.2.7
  * @author 万去了了
  * @homepage https://zrcdy.dpdns.org/
  * @updateUrl https://zrcdy.dpdns.org/lx/xinghai-music-source.js
  * @feedback cdy1234561103@petalmail.com
- * @lastUpdate 2025-12-30
+ * @lastUpdate 2025-12-31
  */
 
 // ============================ 核心配置区域 ============================
@@ -14,7 +14,7 @@ const UPDATE_CONFIG = {
   // PHP版本检查接口
   versionApiUrl: 'https://zrcdy.dpdns.org/lx/version.php',
   latestScriptUrl: 'https://zrcdy.dpdns.org/lx/index.html',
-  currentVersion: 'v2.2.8'
+  currentVersion: 'v2.2.7'
 };
 
 // 主API接口 - GD Studio
