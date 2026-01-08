@@ -14,7 +14,7 @@ const UPDATE_CONFIG = {
   // PHP版本检查接口
   versionApiUrl: 'https://zrcdy.dpdns.org/lx/version.php',
   latestScriptUrl: 'https://zrcdy.dpdns.org/lx/index.html',
-  currentVersion: 'v2.2.7'
+  currentVersion: 'v2.2.8'
 };
 
 // 主API接口 - GD Studio
