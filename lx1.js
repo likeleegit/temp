@@ -1,5 +1,5 @@
 /*!20260108
- * @name Ciallo～(∠・ω< )⌒☆
+ * @name Ciallo260108
  * @description 仅支持网易，理论支持全音质
  * @version v0721
  * @author 竹佀＆玥然OvO
