@@ -9,7 +9,7 @@ const DEV_ENABLE = false
 const UPDATE_ENABLE = true
 const API_URL = "https://c.wwwweb.top"
 const API_KEY = ""
-const SCRIPT_MD5 = "5a98ceb5a06c3a1a4c4ae270ac8a6661";
+const SCRIPT_MD5 = "fb1a89f3b85f0d6adcda94955828bdc0";
 const MUSIC_QUALITY = JSON.parse('{"git":["128k","320k","flac"],"kw":["128k","320k","flac","flac24bit","hires"],"wy":["128k","320k","flac","flac24bit","hires","atmos","master"]}');
 
 const MUSIC_SOURCE = Object.keys(MUSIC_QUALITY);
