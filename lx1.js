@@ -1,1702 +1,959 @@
-/**
- * @name Hei Music聚合源
- * @description 禁止批量测试！Q群516649104
- * @version v2.3.0-261105-fix
- * @author Compile by CatXiaolan
+/*!
+ * @name 墨澜聚合音源
+ * @description 全平台支持flac，qq/wy/kw/kg/支持母带，新增汽水音乐
+ * @version 2.3.5
+ * @author 白姬9527(2449067834)
+ * @homepage https://github.com/baiji6/molanyinyueyuan
+ * @license MIT
+ * @update 2026-10-26
+ * @changelog
+ *    1.修复QQ
+      2.支持汽水音乐
+      3.咪咕新增音质（LX不支持）
+ * @tx_cookie null
+ * @wy_cookie null
  */
-;(function() {
 
+const { EVENT_NAMES, request, on, send, currentScriptInfo } = globalThis.lx
 
-const { EVENT_NAMES, request, on, send } = globalThis.lx
+// ==================== 解析头部注解 ====================
 
-// ========== 统计上报配置 ==========
-// 上报地址存储于内部资源表，由 PANEL_REPORT_URL 运行时解码获得，源码中不含明文地址
-// 为空字符串则不上报（PANEL_REPORT_URL 定义见下方解码函数之后）
+const currentScript = currentScriptInfo
+  ? currentScriptInfo.rawScript
+  : (typeof document !== 'undefined' ? document.currentScript?.textContent || '' : '')
 
-// ========== 内部资源解码（密钥与字符表均在运行时派生，源码不保存明文） ==========
-var _0x2b6e = [
-  18,25,81,2,51,94,182,254,195,227,145,196,252,198,139,
-]
-var _0x2b6f = ''
-var _0x2b6c = function() {
-  if (_0x2b6f) return _0x2b6f
-  var s = ''
-  for (var i = 0; i < _0x2b6e.length; i++) s += String.fromCharCode((_0x2b6e[i] ^ (0x5a + i * 7)) & 255)
-  return (_0x2b6f = s)
-}
-var _0x2b70 = [
-  56,48,8,41,60,4,53,44,21,23,44,15,3,23,8,35,
-  37,22,48,48,21,14,26,7,12,21,22,54,1,63,39,18,
-  2,37,7,61,59,50,18,51,18,26,0,34,7,54,49,22,
-  20,46,26,2,54,11,35,42,39,49,52,62,48,20,63,9,
-]
-var _0x2b71 = ''
-var _0x2b6d = function() {
-  if (_0x2b71) return _0x2b71
-  var s = ''
-  for (var i = 0; i < _0x2b70.length; i++) {
-    var v = _0x2b70[i] ^ ((0x33 + ((i * 29) & 63)) & 63)
-    s += String.fromCharCode(v < 26 ? 65 + v : v < 52 ? 71 + v : v < 62 ? v - 4 : v === 62 ? 95 : 45)
+const parseHeader = (str) => {
+  const comment = /^\/\*!(?:.|\n)+?\*\//.exec(str)?.[0]
+  if (!comment) return {}
+  const result = {}
+  const pairs = [
+    { key: 'tx_cookie', regex: /\*\s*@tx_cookie\s+(.+)/ },
+    { key: 'wy_cookie', regex: /\*\s*@wy_cookie\s+(.+)/ },
+  ]
+  for (const { key, regex } of pairs) {
+    const match = regex.exec(comment)
+    const val = match?.[1]?.trim()
+    result[key] = (!val || val === 'null') ? '' : val
   }
-  return (_0x2b71 = s)
-}
-// 解包：3 字符还原 16 位值（含位置轮换还原）
-var _0x4e11 = function(str) {
-  var A = _0x2b6d(), r = [], n = 0
-  for (var i = 0; i + 2 < str.length; i += 3) {
-    var v = (A.indexOf(str.charAt(i)) << 12) | (A.indexOf(str.charAt(i + 1)) << 6) | A.indexOf(str.charAt(i + 2))
-    r.push((v - n * 17) & 0xffff)
-    n++
-  }
-  return r
-}
-// 解码：逐字符与派生键异或还原明文
-var _0x4e8f = function(arr) {
-  var k = _0x2b6c(), r = ""
-  for (var i = 0; i < arr.length; i++) r += String.fromCharCode(arr[i] ^ k.charCodeAt(i % k.length))
-  return r
+  return result
 }
 
-// 内部资源表（运行时解码，不含明文）
-var _0xa3b1 = {
-  nianxin_kw: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlHLjwLbOLbOLjELAbLbWLbmLAuLb-LULLU6LUgLUMLSALUQLSSLS5LOALSYLOHLOwLvTLvxLOZLvsL5_L5fL9FL9LL58L9SL9MLMbL9_',
-  gdstudio: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlpLjoLjALjILbcLAbLbELbVLbsLbPLA8LU8LUwLAyLUPLUwLOSLOSLS-LSTLOxLvWLOpLvCLO-L56L5TL5GLvx',
-  ynx_tx: 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLblLbvLj3Lb_LbSLb3LbDLAZLbILAXLUVLUxLS2LUZLUoLSSLSeLS7LOrLOALOELOnLvhLvvLvsL5DL5-L9mL5tL5CL9C',
-  ynx_tx2: 'LLRLLDLgQLgmLgxLgYLljLj2Ll6LlhLbvLlfLAOLjQLb-LbRLATLAwLUFLUELU8LUgLUMLSULS6LOALSmLSoLSyLvgLOaLOTLvCLOZLv6L9FL5ELvxL5GL9wL9CL9bL9o',
-  nianxin_wy: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlHLjwLbOLbOLjELAbLbWLbmLAuLb-LULLU6LUgLUMLSALUQLSSLS5LOALSYLOHLOwLvTLvxLOZLvsL5_L5fL9FL5oL5zL9SL9MLMbL9_',
-  nianxin_tx: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlHLjwLbOLbOLjELAbLbWLbmLAuLb-LULLU6LUgLUMLSALUQLSSLS5LOALSYLOHLOwLvTLvxLOZLvsL5_L5fL9FL5wL5dL9SL9MLMbL9_',
-  nianxin_kg: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlHLjwLbOLbOLjELAbLbWLbmLAuLb-LULLU6LUgLUMLSALUQLSSLS5LOALSYLOHLOwLvTLvxLOZLvsL5_L5fL9FL9LL5hL9SL9MLMbL9_',
-  wwwweb: 'LLRLLDLgQLgmLgxLgYLljLj2LlxLj6Lj3LjFLjuLjVLALLbCLATLAYLbhLAsLARLSbLAyLUCLUwLScLOULSHLSDLvO',
-  vkeys_tx: 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLblLbOLj3Lj-LALLb3Lb0LbsLALLAYLARLSbLAyLUCLUwLScLOULSuLSHLvULOCLOoLvELv5L5oL5XL9gL5mL5PL9oLMAL9jLMUL94',
-  migu_search: 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLjwLbOLj4LbxLASLb6LATLA-LbyLAWLU1LUgLUMLSULS6LS1LUxLvOLSDLOfLOZLOTLvoLvmLvpL5dL5gLvcL9bL5wL9GLMAL9wL9uL7lLMELMCL73L7HL7hL78L7fLBZ',
-  migu_listen: 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLjwLbOLjILbxLASLb6LATLA-LbyLAWLU1LUgLUMLSULS6LOWLS8LSRLOlLvtLvsLvWLOCLv4Lv-LvWL5LL5xLMbL53LMUL9UL93L9uL7ALMZL7WL7CL7OL7pL7_LFgLBmLBtLB8LFcLFALF5LFyL2bLmwL2XL2cLmu',
-  oiapi_migu: 'LLRLLDLgQLgmLgxLgYLljLj2LjULloLjxLjBLbSLbxLASLboLbeLbELbGLAsLU_LUlLUYLUfLSaLS6LSyLS1LSKLOuLOkLO1',
-  kw_mobi: 'LLRLLDLgQLgmLjjLgVLljLlNLjbLlYLjILjALAOLj-Lb3LbGLbtLbsLALLAYLARLSbLUmLUxLUwLSOLS5',
-  report_url: 'LLRLLDLgQLgmLjjLgVLljLjbLbSLj8LloLbFLAOLbpLjPLAWLAdLb1LUmLSlLATLAtLUcLSpLSTLSSLS9LOlLSkLvALOsLO0LOELvBLvQL5T',
-  ynx_apikey_a: 'LgcLLQLlgLlNLlxLgwLgTLlILlPLjtLl3LbNLb3LbXLj4LAZLAeLAZLUmLATLAwLAQLUyLS6LS0LSZLUxLSfLOXLS4LOoLvd',
-  ynx_apikey_b: 'LgPLgzLLYLlMLlZLlaLlILlPLj6LluLluLlcLjILbRLAjLA3LAeLbCLU7LUhLUdLATLUsLUELStLSPLOFLOwLOTLScLO1Lve',
-  shouji_tx_a: 'LLRLLDLgQLgmLgxLgYLljLj2LlxLleLjxLjBLbSLbxLbuLbTLbnLbELA_LAnLUGLUlLAxLUtLUILOALSmLSoLSyLvgLv8LOJLvuLvBL5PL5aL5TL52L9LL5yL93LMJ',
-  shouji_tx_b: 'LgZLLQLlgLLPLgtLgwLgwLlILj1Ll-LlYLjlLb4LbDLjILAGLA_Lb1LbxLUyLA8LUcLUsLUcLSTLU3LUcLSGLO_LS6LvxLvzLOVLOxL5GL5nLvCL5ML9YL5-L9fL5ZLM6LMTL7LL7xL7JL7xLMsLB-L78L7WLFLLFtLFnLBYLBILFfLm_LFYLmtL2nL2yLN9',
-  shouji_tx_c: 'LgYLLDLgKLgmLg8Lg4LlGLgILjULl6',
-  migu_referer_app: 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLjwLbOLjILbxLASLb6LATLA-LbyLAWLU1LUgLUMLSULS6',
-  migu_referer: 'LLRLLDLgQLgmLgxLgYLljLj2LjbLlpLjoLjALjILbxLAOLbRLbQLA6LA-LACLUVLUl',
+const config = parseHeader(currentScript)
+const TX_COOKIE = config.tx_cookie
+const WY_COOKIE = config.wy_cookie
+const HAS_TX_COOKIE = !!TX_COOKIE
+const HAS_WY_COOKIE = !!WY_COOKIE
+
+// ==================== 运行参数（缓存 / 限流，仿照云记） ====================
+
+const CACHE_TTL = 1200000          // URL 缓存有效期：20 分钟
+const CACHE_MAX_ENTRIES = 500      // 缓存条目上限，超出后清理过期 + 最旧记录
+const RATE_LIMIT_MAX = 3           // 限流窗口内允许的最大请求数
+const RATE_LIMIT_WINDOW = 1000     // 限流窗口：1 秒
+const RATE_LIMIT_MAX_WAIT = 1500   // 触发限流后最长排队等待时间（超时则抛错）
+const LOG_DEBUG = false            // 调试日志开关
+
+const DEBUGLog = (...args) => {
+  if (LOG_DEBUG) console.log('[墨澜-DEBUG]', ...args)
 }
 
-// 运行时解码内部资源
-var _dec = function(name) {
-  return _0x4e8f(_0x4e11(_0xa3b1[name]))
+// ==================== 音质列表 ====================
+
+const QUALITY_FULL = {
+  // QQ 主接口已切换为云记（海堂），无需 Cookie 即可取到高音质，故不再按 Cookie 收敛音质档位
+  tx: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'atmos_plus', 'master'],
+  wy: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'],
+  kw: ['128k', '192k', '320k', 'flac', 'flac24bit'],
+  kg: ['128k', '320k', 'flac', 'hires', 'atmos', 'master'],
+  // 咪咕主接口已切换为云记（海堂），支持无损/24bit/全景声/母带
+  mg: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'],
+  qs: ['128k', '320k', 'flac', 'spatial', 'hires'],
 }
 
-// 上报地址（解码获得，避免明文；为空则不上报）
-var PANEL_REPORT_URL = _dec('report_url')
+const MUSIC_QUALITY = Object.assign({}, QUALITY_FULL, {
+  // 网易云仍走 ikun 接口，未配置 Cookie 时保持只开放基础音质（与原版一致）
+  wy: HAS_WY_COOKIE ? QUALITY_FULL.wy : ['128k', '320k', 'flac'],
+})
 
-// 内部文案表（运行时解码，按索引取值）
-var _0x2c7a = [
-  'SFgA35SSl', 'AGIAfMLlMLgYLgmLjO',
-  'AGIAfMLlFLgp', 'LLGLL8LgGLgSLgxOUHO3j',
-  'LLGLL8LgGLgSLgxOUHO3jLgxLjw', 'AGIAfMLliLgD',
-  'viEvecU-3UXL', 'AGIAfMLg3LgS',
-  'LLwLLYLgZLLILghLlkLlcLgELjLLlGLj3Lja', 'LLfLLRLg3Lg7Lg8Llr',
-  'LLQLL6LgoLgMLghLleLjgLl2', 'LLdLLxvkobZ3S0-vgN',
-  'AqKAqGU2SSyl', 'UdJUhRvkobZ3UPd',
-  'UaGv0FOlAANn', 'LLLLLHLlmAbhS0q',
-  'LLCLL1LLZLggLgpLlr', 'LLtLLKLgxLgmLg3Aq_Ai7',
-  'vbfUvxLgyLL-LgwLlk', 'AGIAfMLlMLgYLgmLjOLgYLjMUYWUeVLbKLjKbPwA3OAR7',
-  'AGIAfMLlMLgYLgmLjOLgYLjMbc8UJYUFzOugAc6A2R', 'AGIAfMLlFLgpLjjLgnbIDUJ2UFnLj4LjQLjr',
-  'AGIAfMLlFLgpLjjLgnUQ8U0GLlRLjJbcTAQyAVU', 'AGIAfMLliLgDLjjLgnbIDUJ2UFnLj4LbbLlf',
-  'AGIAfMLliLgDLjjLgnUQ8U0GLlRLjJbcTAQyAVU', 'LLQLL6LgoLgMLghLleLjgLl2Lj4Lj4bcTUnSUmkOu4APHANE',
-  'LLQLL6LgoLgMLghLleLjgLl2Lj4Lj4U3tUDMLjtLbibPpA3FAVR', 'LLQLL6LgoLgMLghLleLjgLl2LjZO2TAN2Ap7OZj',
-  'LLdLLxvkobZ3S0-vgNLgsbPtUnUUmiLlcLjNLjy', 'LLdLLxvkobZ3S0-vgNLgYLjMUYWUeVLbKLjKbPwA3OAR7',
-  'LLdLLxvkobZ3S0-vgNLgYLjMURjvgSA_dURWUJTva1UNL', 'SFgA35SSlLlLbcbUaVUBdLjMLl6Ll0',
-  'SFgA35SSlLl5LlCUQbUeTLl4LlDbPmA3qARU', 'SFgA35SSlLl5LlCvRWOyLvzQSIG',
-  'SFgA35SSlLl5LlCUD_vgMAeKUkRUJ9vaZUNg', 'AGIAfMLg3LgSLlCbPcUrjUFwLjZLlTLjH',
-  'AGIAfMLg3LgSLjjLgnUQ8U0GLlRLjJbcTAQyAVU', 'LLfLLRLg3Lg7Lg8LlrLgYLjMbPeUJYUFzLjGLjuLjtLbULbKLbk',
-  'LLfLLRLg3Lg7Lg8LlrLgYLjMUYWUeVLbKLjKbPwA3OAR7', 'viEvecU-3UXLLjjLgnbxWUJ2UFnO3sAcoA2B',
-  'viEvecU-3UXLLjjLgnUQ8U0GLlRLjJbcTAQyAVU', 'LLwLLYLgZLLILghLlkLlcLgELjLLlGLj3LjaLbGbGqUnUU2OLApLAQLAU',
-  'LLwLLYLgZLLILghLlkLlcLgELjLLlGLj3LjaLbhLb3UuCU_ZLAgLU_bGNAuRAVk', 'LLGLL8LgGLgSLgxOUHO3jLjULjZbInUJOUmDLbGLj8LbI',
-  'LLGLL8LgGLgSLgxOUHO3jLjULjZUQFUD6LjWLjKbI0AuDAVk', 'AqKAqGU2SSylLjjLgnbIDUJ2UFnLj4LbULlf',
-  'AqKAqGU2SSylLjjLgnSIYA40UYWUeVAqT', 'AqKAqGU2SSylLjjLgnUDGU5lA9CUQFUD6',
-  'AqKAqGU2SSylLjjLgnUDGOmZAmFA9XLjPLjSLbOLj8LALLbWLbeLU2Lbc', 'UdJUhRvkobZ3UPdLgYLgsbcQUnUUmiOuGAc9A2Y',
-  'UdJUhRvkobZ3UPdLgYLgsUY3UewLjMLbkbPCAQrARs', 'UaGv0FOlAANnLjjLgnbIDUJ2UFnLj4LjQLjr',
-  'UaGv0FOlAANnLjjLgnUQ8U0GLlRLjJbcTAQyAVU', 'UaGv0FOlAANnLjjLgnUDGvLnAeJURMUnXvanUqj',
-  'LLLLLHLlmAbhS0qLgYLgsUY3UewLjMLbkbPCAQrARs', 'LLGLL8LgGLgSLgxOUHO3jLgxLjwLjdLlcbIVUdvU2FLbALbcLbm',
-  'LLGLL8LgGLgSLgxOUHO3jLgxLjwLjdLlcUQ1UDoLbJLAVbIbA33ARH', 'LLCLL1LLZLggLgpLlrLgYLjMbPeUJYUFzLjGLjHLjp',
-  'LLCLL1LLZLggLgpLlrLgYLjMSf4AhbU3tUDMAiw', 'LLCLL1LLZLggLgpLlrLgYLjMURjvgSA_dURWUJTva1UNL',
-  'LLtLLKLgxLgmLg3Aq_Ai7LjULjZbInUJOUmDLbGLjcLbG', 'LLtLLKLgxLgmLg3Aq_Ai7LjULjZSfdA45UQ1UDoAa0',
-  'LLtLLKLgxLgmLg3Aq_Ai7LjULjZUkCvlFADsURtUnnvrEUqo', 'vbfUvxLgyLL-LgwLlkLgYLjMbPeUJYUFzLjGLbALjV',
-  'vbfUvxLgyLL-LgwLlkLgYLjMUYWUeVLbKLjKbPwA3OAR7', 'UrpABpSi4UP3',
-  'AP0AvUS5qUDhAEcOXDAjiSJiFfWO3TUDQUzBvV6UfL', 'SIHAuxUYJU0NbfpUlV',
-  'LLCLLoLgQLLELgYLlKLgsLlNLjULltLlcLj9Lj4LjRLb-LbTLbzLAY', 'OYfUu9OE_UJBLlu',
-  'AGIAfMLg3LgSLjjLgn', 'LLfLLRLg3Lg7Lg8LlrLgYLjM',
-  'viEvecU-3UXLLjjLgn', 'LLwLLYLgZLLILghLlkLlcLgELjLLlGLj3LjaLbhLb3',
-  'LLGLL8LgGLgSLgxOUHO3jLjULjZ', 'AqKAqGLLWLlL',
-  'UdJUhRvkobZ3UPdLgYLgs', 'LLLLLHLlmAbhS0qLgYLgs',
-  'LLGLL8LgGLgSLgxOUHO3jLgxLjwLjdLlc', 'vbfUvxLgyLL-LgwLlkLgYLjM',
-  'UOOU_lLlzLg3LgmUPOAk0ATcOEPLjdLjW', 'UrpABpSi4UP3UrYU7EAxtAFPLj4Lj4',
-  'UrpUapU7zSeevkxbcOAxtAFPLj4Lj4', 'LgtLL1LgwLLELlQLlpLjLLgPLjyLlhLjPLjNLbSLjZLASLAhLbwLAHLbxLACLUeLSNLAyLUpLUyLSZLS2LOl',
-  'LLsLLWLgxLgMLgtLlVLlTLlFLjh', 'LgYLL1LgwLLELlP',
-  'LgYLLeLgYLggLg1Ll0LltLgILjh', 'LgYLLDLgHLL4Lg8Lg4',
-  'LgYLL_LgoLLcLgcLj2LjgLlOLjh', 'LgYLLoLgELLELg8LlKLloLlVLl6LleLjwLjgLbc',
-  'LgYLL0LgGLLILg3LlVLjlLlf', 'LgYLLzLgYLLfLg6LlkLloLljLjh',
-  'LgYLLoLgELLELg8LlKLloLlVLjLLlXLly', 'LLCLLoLgQLLELgYLlKLg-Ll5LlsLloLbSLjgLbl',
-  'LgYLL0LgGLgFLghLl0LltLgsLlrLloLjfLbd', 'LgYLL1LgwLLELgxLg4',
-  'LgYLL1LgQLgMLg8LlXLlpLgsLlrLlHLbOLj2LbOLj8Ljs', 'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLblLbOLbSLjRLAMLb6Lb2LbsLbhLAxLUnLAHLUvLSALURLOALUPLSuLO1Lv5LOZLOTLvE',
-  'LLWLL_LgoLLELg1Lj9LlTLlm', 'LLXLL3',
-  'LLPLL2', 'LLWLL3',
-  'LLfLLN', 'LLXLLR',
-  'SaZbPSUR9bPCAm_AenFG8UAiSDSA9mUdcU-ubfZSnsO4LvKxUfsLgrO4MUJlAIdSdfUBsLUkLSrUFsOUgALhO6oA7u', 'LLCLLoLgQLLELgYLlKLg-Ll9LloLltLbOLjELjPLjPLAbLb1LbXLAyLbyLAZLUw',
-  'LgYLLQLgwLlj', 'v_cO-VvzrScI',
-]
-_0x2c7a.push(
-  'LLCLLoLgQLLELgYLlKLg-LlqLlC', 'LLCLLoLgQLLELgYLlKLg-Ll9LjALlsLj6LjN',
-  'LgYLLeLgQLLfLg-LlwLltLlf', 'LgYLLYLg6LgNLgYLlTLg-',
-  'LLRLLDLgQLgmLgxLgYLljLj2LlsLlXLblLbOLbSLjRLbSLbxLb1LbELbPLAXLURLSLLAc',
-  'LLRLLDLgQLgmLgxLgYLljLj2LjLLlXLblLjOLbLLjZLbSLbRLbtLbELbZLAZLURLSg',
-  'UzPUJdU80U_cATsO-0FGB', 'LgYLLeLgPLgNLg3LlpLloLlVLlQLlsLj6Lj9LbSLjZLASLAh',
-  'SaRUvRLlNLgeFGX', 'FILv_eUc9SvnU_6FGB',
-  'OLBUf-vkoUP3', 'LgtLL1LgwLLELlQLlpLjLLgPLjyLlhLjPLjNLbSLjZLASLAhLb8LAyLA8LA4LUWLSj',
-  'OLBUf-UBGAFgOmyA25AWCOES', 'OLBUf-UBGAFgbcqUn0O3wUHYAswvgDLlcLb2LbYLbRLbAUupbGlv_5'
+const MUSIC_SOURCE = Object.keys(MUSIC_QUALITY)
+
+// ==================== 工具函数 ====================
+
+const isBufferLike = (obj) => obj && typeof obj === 'object' && (
+  (typeof Buffer !== 'undefined' && typeof Buffer.isBuffer === 'function' && Buffer.isBuffer(obj)) ||
+  (typeof obj.constructor === 'function' && obj.constructor.name === 'Buffer')
 )
-var _0x8d40 = {}
-var _g = function(i) {
-  if (_0x8d40[i] === undefined) _0x8d40[i] = _0x4e8f(_0x4e11(_0x2c7a[i]))
-  return _0x8d40[i]
-}
 
-// 安全日志封装：移动版引擎宿主 API 极少，console 可能不存在，
-// 直接使用 console.log 在初始化/请求阶段抛错会导致脚本初始化失败或请求异常
-var _0x6b0f = function() {
-  try {
-    if (typeof console !== 'undefined' && console.log) console.log.apply(console, arguments)
-  } catch (e) {}
-}
-var _0x6b0e = function() {
-  try {
-    if (typeof console !== 'undefined' && console.error) console.error.apply(console, arguments)
-  } catch (e) {}
-}
-
-const _0x6a02 = (url, options) => {
-  let abortFn = null
-  const p = new Promise((resolve, reject) => {
-    try {
-      const opts = options || {}
-      // 默认超时：竞速超时或调用方超时后，底层请求会在限期内自动终止，避免悬挂连接
-      if (!opts.timeout) opts.timeout = 5000
-      abortFn = request(url, opts, (err, resp) => {
-        if (err) return reject(err)
-        resolve(resp.body)
-      })
-    } catch (e) {
-      reject(e)
+const parseBody = (body) => {
+  if (body == null) return body
+  const tryJson = (str) => {
+    if (typeof str !== 'string') return str
+    const trimmed = str.trim()
+    if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('"')) {
+      try { return JSON.parse(trimmed) } catch (e) {}
     }
-  })
-  // 暴露中止能力，供竞速超时时取消底层请求
-  p.abort = () => { try { if (typeof abortFn === 'function') abortFn() } catch (e) {} }
-  return p
-}
-
-// 带响应头的请求封装：部分接口（如咪咕 listenSong）通过 302 返回真实直链，
-// 需读取 Location 头才能拿到可播放地址
-const _0x6a01 = (url, options) => {
-  let abortFn = null
-  const p = new Promise((resolve, reject) => {
+    return str
+  }
+  if (typeof body === 'string') return tryJson(body)
+  if (isBufferLike(body)) {
     try {
-      const opts = options || {}
-      if (!opts.timeout) opts.timeout = 5000
-      abortFn = request(url, opts, (err, resp) => {
-        if (err) return reject(err)
-        resolve({
-          body: resp && resp.body,
-          headers: (resp && resp.headers) || {},
-          statusCode: resp && resp.statusCode,
-          // LX-X 等客户端的原生请求会自动跟随 302，最终 URL 只能从这里取得
-          url: resp && resp.url,
-        })
-      })
+      const text = globalThis.lx?.utils?.buffer?.bufToString
+        ? globalThis.lx.utils.buffer.bufToString(body, 'utf-8')
+        : (typeof Buffer !== 'undefined' ? Buffer.from(body).toString('utf-8') : String(body))
+      return tryJson(text)
     } catch (e) {
-      reject(e)
+      return body
     }
-  })
-  p.abort = () => { try { if (typeof abortFn === 'function') abortFn() } catch (e) {} }
-  return p
+  }
+  return body
 }
 
-// 带超时的请求封装，避免慢速API阻塞并发竞速
-// 超时优先中止底层 HTTP 请求（若封装链暴露了 abort），减少悬挂连接与无效上报
-const _0x6a03 = function(promise, ms) {
-  var timer = null
-  var timeout = new Promise(function(_, reject) {
-    timer = setTimeout(function() {
-      try {
-        if (promise && typeof promise.abort === 'function') promise.abort()
-      } catch (e) {}
-      reject(new Error(_g(69) + ms + 'ms)'))
-    }, ms)
-  })
-  return Promise.race([promise, timeout]).then(function(v) {
+// 带超时保护的请求（超时逻辑仿照云记：JS 层兜底，避免后端长时间无响应）
+const httpFetch = (url, options = { method: 'GET' }) => new Promise((resolve, reject) => {
+  const timeout = options.timeout || 15000
+  let settled = false
+  const timer = setTimeout(() => {
+    if (settled) return
+    settled = true
+    reject(new Error('请求超时 ' + timeout + 'ms'))
+  }, timeout)
+  request(url, options, (err, resp) => {
+    if (settled) return
+    settled = true
     clearTimeout(timer)
-    return v
-  }, function(e) {
-    clearTimeout(timer)
-    throw e
+    if (err) return reject(err)
+    resolve({
+      body: parseBody(resp.body),
+      statusCode: resp.statusCode,
+      headers: resp.headers || {},
+    })
   })
+})
+
+// ==================== baimusic QQ 加密工具（备用后端） ====================
+
+const _u8 = (arr) => {
+  const bytes = new Uint8Array(arr.length)
+  for (let i = 0; i < arr.length; i++) bytes[i] = arr[i]
+  return bytes
 }
 
-const _0x6a04 = function(url) {
-  if (!url || typeof url !== 'string') return false
-  if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) return false
-  if (url.indexOf('panspace.kuwo.cn') !== -1) return false
-  // 加密母带/全景声容器（QQ A000/AI000/Q000 系，实为加密 ogg/mp4，下载后无法播放）
-  if (/(?:^|\/)(?:AI000|A000|Q000|Q001)[0-9A-Za-z]{6,}\.(?:flac|m4a|mp3|mp4)(?:$|\?)/i.test(url)) return false
-  return true
+const _utf8Encode = (str) => {
+  const bytes = []
+  for (let i = 0; i < str.length; i++) {
+    let code = str.charCodeAt(i)
+    if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {
+      const next = str.charCodeAt(i + 1)
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        code = 0x10000 + ((code - 0xd800) << 10) + (next - 0xdc00)
+        i++
+      }
+    }
+    if (code < 0x80) {
+      bytes.push(code)
+    } else if (code < 0x800) {
+      bytes.push(0xc0 | (code >> 6), 0x80 | (code & 63))
+    } else if (code < 0x10000) {
+      bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63))
+    } else {
+      bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 63), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63))
+    }
+  }
+  return _u8(bytes)
 }
 
-// URL 清洗：统一处理 HTML 实体、反斜杠转义与协议相对地址
-const _0x6a0b = function(url) {
-  if (typeof url !== 'string') return ''
-  var s = url.trim()
-  s = s.replace(/&amp;/g, '&').replace(/&#38;/g, '&').replace(/&#x26;/g, '&')
-  s = s.replace(/\\\//g, '/')
-  if (s.indexOf('//') === 0) s = 'https:' + s
+const _base64Encode = (bytes) => {
+  const b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  let out = ''
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i]
+    const b1 = i + 1 < bytes.length ? bytes[i + 1] : 0
+    const b2 = i + 2 < bytes.length ? bytes[i + 2] : 0
+    out += b64[b0 >> 2]
+    out += b64[((b0 & 3) << 4) | (b1 >> 4)]
+    out += i + 1 < bytes.length ? b64[((b1 & 15) << 2) | (b2 >> 6)] : '='
+    out += i + 2 < bytes.length ? b64[b2 & 63] : '='
+  }
+  return out
+}
+
+const _base64Decode = (str) => {
+  const b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const map = {}
+  for (let i = 0; i < b64.length; i++) map[b64[i]] = i
+  str = str.replace(/=+$/, '')
+  const out = []
+  let buffer = 0, bits = 0
+  for (let i = 0; i < str.length; i++) {
+    buffer = (buffer << 6) | map[str[i]]
+    bits += 6
+    if (bits >= 8) {
+      bits -= 8
+      out.push((buffer >> bits) & 0xff)
+    }
+  }
+  return _u8(out)
+}
+
+const _hexDecode = (hex) => {
+  const out = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16)
+  return out
+}
+
+const _sha256 = (bytes) => {
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ]
+  const l = bytes.length
+  const bitLen = l * 8
+  const padded = new Uint8Array(((l + 8) >> 6 << 6) + 64)
+  padded.set(bytes)
+  padded[l] = 0x80
+  const dv = new DataView(padded.buffer)
+  dv.setUint32(padded.length - 4, bitLen >>> 0, false)
+  dv.setUint32(padded.length - 8, Math.floor(bitLen / 0x100000000), false)
+  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a
+  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19
+  const w = new Array(64)
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n))
+  for (let i = 0; i < padded.length; i += 64) {
+    for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4, false)
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3)
+      const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10)
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0
+    }
+    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)
+      const ch = (e & f) ^ (~e & g)
+      const temp1 = (h + S1 + ch + K[t] + w[t]) | 0
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)
+      const maj = (a & b) ^ (a & c) ^ (b & c)
+      const temp2 = (S0 + maj) | 0
+      h = g; g = f; f = e; e = (d + temp1) | 0
+      d = c; c = b; b = a; a = (temp1 + temp2) | 0
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0
+    h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0
+  }
+  const toHex = (x) => ('00000000' + (x >>> 0).toString(16)).slice(-8)
+  return toHex(h0) + toHex(h1) + toHex(h2) + toHex(h3) + toHex(h4) + toHex(h5) + toHex(h6) + toHex(h7)
+}
+
+const _hmacSha256Hex = (key, msg) => {
+  const k = key.length > 64 ? _hexDecode(_sha256(key)) : key
+  const ipad = new Uint8Array(64)
+  const opad = new Uint8Array(64)
+  for (let i = 0; i < 64; i++) ipad[i] = 0x36
+  for (let i = 0; i < 64; i++) opad[i] = 0x5c
+  for (let i = 0; i < k.length; i++) { ipad[i] ^= k[i]; opad[i] ^= k[i] }
+  const inner = new Uint8Array(ipad.length + msg.length)
+  inner.set(ipad)
+  inner.set(msg, ipad.length)
+  const outer = new Uint8Array(opad.length + 32)
+  outer.set(opad)
+  outer.set(_hexDecode(_sha256(inner)), opad.length)
+  return _sha256(outer)
+}
+
+// 魔改 AES SBOX
+const _SBOX = [
+  0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+  0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+  0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+  0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+  0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+  0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+  0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+  0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+  0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+  0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+  0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+  0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+  0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+  0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+  0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+  0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
+]
+
+const _buildMagicSbox = () => {
+  const s = _SBOX.slice()
+  const swaps = [[0, 99], [82, 120], [160, 224], [27, 212]]
+  for (const [a, b] of swaps) { const t = s[a]; s[a] = s[b]; s[b] = t }
   return s
 }
 
-// Location 可能是相对路径：按原请求地址补全 scheme + host
-const _0x6a0c = function(base, loc) {
-  loc = _0x6a0b(loc)
-  if (!loc) return ''
-  if (loc.indexOf('//') === 0) return 'https:' + loc
-  if (loc.charAt(0) === '/') {
-    var m = /^(https?:\/\/[^\/]+)/i.exec(String(base || ''))
-    return m ? m[1] + loc : ''
+const _REQ_KEY = _u8([0x4b, 0x72, 0x9a, 0xf3, 0x1d, 0x88, 0xc5, 0x07, 0xbe, 0x34, 0x61, 0xaa, 0x09, 0x55, 0xe2, 0x7c])
+const _REQ_IV = _u8([0x3f, 0x91, 0x6d, 0x04, 0xba, 0x27, 0xcc, 0x58, 0x14, 0xf9, 0x8b, 0xe0, 0x72, 0x4a, 0xd6, 0x01])
+const _RESP_KEY = _u8([0x9c, 0x4e, 0x71, 0xb2, 0xda, 0x38, 0x06, 0xf5, 0x83, 0xcc, 0x1a, 0x47, 0x29, 0xe8, 0x5d, 0xbf])
+const _HMAC_KEY = _u8([0x5a, 0x1f, 0x8e, 0x3c, 0xb7, 0x92, 0x64, 0x0d, 0xfa, 0x48, 0x15, 0x7b, 0xe3, 0xc9, 0x2a, 0x86])
+
+const _magicAesEncrypt = (plaintext) => {
+  const bytes = _utf8Encode(plaintext)
+  const padLen = 16 - (bytes.length % 16)
+  const padByte = padLen ^ 90
+  const padded = new Uint8Array(bytes.length + padLen)
+  padded.set(bytes)
+  for (let i = bytes.length; i < padded.length; i++) padded[i] = padByte
+  const sbox = _buildMagicSbox()
+  const key = _REQ_KEY
+  const iv = _REQ_IV.slice()
+  const out = new Uint8Array(padded.length)
+  for (let i = 0; i < padded.length; i += 16) {
+    const block = new Array(16)
+    for (let j = 0; j < 16; j++) block[j] = (padded[i + j] & 0xff) ^ iv[j]
+    for (let j = 0; j < 16; j++) block[j] = sbox[block[j]]
+    for (let j = 0; j < 16; j++) block[j] = block[j] ^ key[j]
+    const shifted = new Array(16)
+    for (let r = 0; r < 4; r++)
+      for (let c = 0; c < 4; c++)
+        shifted[r * 4 + c] = block[r * 4 + ((c + r) % 4)]
+    for (let j = 0; j < 16; j++) { out[i + j] = shifted[j]; iv[j] = shifted[j] }
   }
-  return loc
+  return _base64Encode(out)
 }
 
-// 媒体直链 https 升级：仅对已验证支持 https 的音频 CDN 生效，其余保持原样
-const _0x6a09 = function(url) {
-  url = _0x6a0b(url)
-  if (typeof url !== 'string' || url.indexOf('http://') !== 0) return url
-  var m = /^http:\/\/([^\/?#]+)/.exec(url)
-  if (!m) return url
-  var host = m[1].toLowerCase().replace(/:\d+$/, '')
-  // 网易云 m*.music.126.net、QQ aqqmusic.tc.qq.com 等已实测支持 https；
-  // Android/LX-X 下载器会拦截明文 HTTP，统一升级可避免“能播放但下载失败”
-  if (/^(?:[a-z0-9-]+\.)*(?:kuwo\.cn|qqmusic\.qq\.com|music\.126\.net|kugou\.com|migu\.cn)$/.test(host) ||
-      /^aqqmusic\.tc\.qq\.com$/.test(host)) return 'https://' + url.slice(7)
-  return url
-}
-
-// 统计上报：异步发送调用数据到控制面板，不阻塞主流程
-// 使用随机生成的用户ID区分用户，代替IP识别
-var _cachedClientIp = ''
-var _userId = ''
-var _clientType = ''
-
-// 检测客户端类型（轻量 UA 嗅探，兼容无 navigator 的环境）
-var _0x6b07 = function() {
-  try {
-    var ua = (globalThis && globalThis.navigator && globalThis.navigator.userAgent) || ''
-    if (/android/i.test(ua)) _clientType = 'Android'
-    else if (/iphone|ipad|ios/i.test(ua)) _clientType = 'iOS'
-    else if (/windows/i.test(ua)) _clientType = 'Windows'
-    else if (/macintosh|mac os/i.test(ua)) _clientType = 'macOS'
-    else if (/linux/i.test(ua)) _clientType = 'Linux'
-  } catch(e) {}
-  // 移动版无 navigator：用洛雪宿主环境标识兜底
-  if (!_clientType) {
-    try {
-      var env = (globalThis && globalThis.lx && globalThis.lx.env) || ''
-      if (env === 'mobile') _clientType = 'LX-Mobile'
-      else if (env === 'desktop') _clientType = 'LX-Desktop'
-    } catch(e) {}
+const _rc4Decrypt = (b64) => {
+  const data = _base64Decode(b64)
+  const key = _RESP_KEY
+  const s = new Array(256)
+  for (let i = 0; i < 256; i++) s[i] = i
+  let j = 0
+  for (let i = 0; i < 256; i++) {
+    j = (j + s[i] + key[i % key.length]) & 0xff
+    const t = s[i]; s[i] = s[j]; s[j] = t
   }
-}
-
-// 设备特征：与后台 IP/UA 共同确定稳定用户ID（移动版仅能取到 env 与时区）
-var _deviceFp = ''
-var _0x6b12 = function() {
-  var parts = []
-  try {
-    if (globalThis && globalThis.lx && globalThis.lx.env) parts.push('env:' + globalThis.lx.env)
-  } catch(e) {}
-  try {
-    var nav = (globalThis && globalThis.navigator) || null
-    if (nav) {
-      // 不把 UA 计入指纹：客户端/脚本升级可能改变 UA，会导致用户ID变化
-      if (nav.language) parts.push('lang:' + nav.language)
-      if (nav.platform) parts.push('plat:' + nav.platform)
-      if (nav.hardwareConcurrency) parts.push('cores:' + nav.hardwareConcurrency)
-      if (nav.deviceMemory) parts.push('mem:' + nav.deviceMemory)
-    }
-  } catch(e) {}
-  try {
-    var scr = (globalThis && globalThis.screen) || null
-    if (scr) parts.push('scr:' + scr.width + 'x' + scr.height + 'x' + (scr.colorDepth || 0))
-  } catch(e) {}
-  try {
-    if (globalThis && typeof globalThis.devicePixelRatio === 'number') parts.push('dpr:' + globalThis.devicePixelRatio)
-  } catch(e) {}
-  try { parts.push('tz:' + new Date().getTimezoneOffset()) } catch(e) {}
-  _deviceFp = parts.join('|')
-}
-
-var _0x6b06 = function() {
-  // 生成随机用户ID（格式: U + 12位随机十六进制）
-  // 混入时间戳与随机数：部分客户端 Math.random 序列固定，仅用随机数会导致所有用户ID相同
-  var chars = '0123456789abcdef'
-  var n = ((Date.now() & 0x7fffffff) ^ Math.floor(Math.random() * 0x7fffffff)) & 0x7fffffff
-  var id = 'U'
-  for (var i = 0; i < 12; i++) {
-    n = (n * 1103515245 + 12345) & 0x7fffffff
-    id += chars.charAt(n & 15)
+  const out = new Uint8Array(data.length)
+  let i = 0; j = 0
+  for (let k = 0; k < data.length; k++) {
+    i = (i + 1) & 0xff
+    j = (j + s[i]) & 0xff
+    const t = s[i]; s[i] = s[j]; s[j] = t
+    out[k] = data[k] ^ s[(s[i] + s[j]) & 0xff]
   }
-  _userId = id
-}
-
-// 公网 IP 合法性校验：过滤内网、回环、链路本地与运营商级 NAT 地址
-var _isPublicIp = function(raw) {
-  var s = String(raw || '').trim()
-  if (!s) return false
-  var m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s)
-  if (m) {
-    var a = +m[1], b = +m[2], c = +m[3], d = +m[4]
-    if (a > 255 || b > 255 || c > 255 || d > 255) return false
-    if (a === 0 || a === 10 || a === 127 || a >= 224) return false
-    if (a === 169 && b === 254) return false
-    if (a === 172 && b >= 16 && b <= 31) return false
-    if (a === 192 && b === 168) return false
-    if (a === 100 && b >= 64 && b <= 127) return false
-    if (a === 198 && (b === 18 || b === 19)) return false
-    return true
+  let result = ''
+  for (let ci = 0; ci < out.length;) {
+    const b = out[ci]
+    if (b < 0x80) { result += String.fromCharCode(b); ci++ }
+    else if (b >= 0xc0 && b < 0xe0) { result += String.fromCharCode(((b & 31) << 6) | (out[ci + 1] & 63)); ci += 2 }
+    else if (b >= 0xe0 && b < 0xf0) { result += String.fromCharCode(((b & 15) << 12) | ((out[ci + 1] & 63) << 6) | (out[ci + 2] & 63)); ci += 3 }
+    else { const cp = ((b & 7) << 18) | ((out[ci + 1] & 63) << 12) | ((out[ci + 2] & 63) << 6) | (out[ci + 3] & 63); result += String.fromCharCode(0xd800 + ((cp - 0x10000) >> 10), 0xdc00 + ((cp - 0x10000) & 1023)); ci += 4 }
   }
-  if (s.indexOf(':') !== -1) {
-    var low = s.toLowerCase()
-    if (low === '::' || low === '::1') return false
-    if (/^f[cd][0-9a-f]{0,2}:/i.test(low) || /^fe[89ab][0-9a-f]{0,2}:/i.test(low)) return false
-    return true
-  }
-  return false
+  return result
 }
 
-var _clientIpPromise = null
-var _ipReady = false
-// 公网 IP 获取：多服务商并行竞速，首个有效公网 IP 胜出并中止其余请求
-// 单路超时 1.2 秒，避免拖慢随后的 action=ip 与 check_update（更新弹窗对延迟敏感）
-var _0x6b08 = function() {
-  if (_clientIpPromise) return _clientIpPromise
-  _clientIpPromise = new Promise(function(resolve) {
-    var urls = [_g(97), _g(112), _g(113)]
-    var pending = urls.length
-    var settled = false
-    var reqs = []
-    var finish = function(ip) {
-      if (settled) return
-      settled = true
-      for (var j = 0; j < reqs.length; j++) {
-        try { if (reqs[j] && typeof reqs[j].abort === 'function') reqs[j].abort() } catch(e) {}
-      }
-      if (ip) {
-        _cachedClientIp = ip
-        resolve(ip)
-      } else {
-        resolve('')
-      }
-    }
-    var pick = function(body) {
-      var ip = body && (body.ip || body.query || body.address)
-      if (!ip) return ''
-      var s = String(ip).trim()
-      if (!s) return ''
-      s = s.replace(/^for=/i, '').replace(/^["']|["']$/g, '')
-      if (s.indexOf(',') !== -1) s = s.split(',')[0].trim()
-      if (s.charAt(0) === '[') {
-        var end = s.indexOf(']')
-        if (end > 0) s = s.slice(1, end)
-      } else if (s.indexOf(':') !== -1 && s.indexOf('.') !== -1) {
-        s = s.split(':')[0]
-      }
-      return _isPublicIp(s) ? s : ''
-    }
-    if (!pending) { finish(''); return }
-    urls.forEach(function(u) {
-      try {
-        var p = _0x6a02(u, { method: 'GET', timeout: 1200 }).then(function(body) {
-          if (typeof body === 'string') {
-            try { body = JSON.parse(body) } catch(e) { body = null }
-          }
-          var ip = pick(body)
-          if (ip) { finish(ip); return }
-          pending--
-          if (pending === 0) finish('')
-        }).catch(function() {
-          pending--
-          if (pending === 0) finish('')
-        })
-        reqs.push(p)
-      } catch(e) {
-        pending--
-        if (pending === 0) finish('')
-      }
-    })
-  })
-  return _clientIpPromise
+// ==================== 酷我流媒体音质Level映射（175.27.166.236:8928 专用） ====================
+
+const KW_STREAM_LEVEL_MAP = {
+  '128k': '128k',
+  '192k': '128k',
+  '320k': '320k',
+  flac: 'flac',
+  flac24bit: 'flac',
+  hires: 'hires',
+  atmos: 'atmos',
+  atmos_plus: 'atmos_plus',
+  master: 'master',
 }
 
-// 使用者IP上报：等待公网 IP 获取完成后发送，失败自动重试一次；后台以服务端观测 IP 优先
-var _ipReported = false
-var _0x6b15 = function() {
-  if (!PANEL_REPORT_URL || _ipReported) return
-  var attempt = 0
-  var post = function() {
-    if (_ipReported) return
-    attempt++
-    try {
-      var body = _g(108) + _g(88) + encodeURIComponent(_userId || '')
-        + _g(89) + encodeURIComponent(_clientType)
-      if (_cachedClientIp) body += _g(92) + encodeURIComponent(_cachedClientIp)
-      if (_deviceFp) body += _g(106) + encodeURIComponent(_deviceFp)
-      body += _g(115) + encodeURIComponent(SCRIPT_VERSION)
-      _0x6a01(PANEL_REPORT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-      }).then(function(resp) {
-        var sc = resp && resp.statusCode
-        // 仅终态响应标记已上报；5xx/无状态码视为暂时失败并重试
-        if (!sc || sc >= 500) {
-          if (attempt < 2) setTimeout(post, 1500)
-          return
-        }
-        _ipReported = true
-        _0x6b13(sc, resp && resp.body)
-      }).catch(function() {
-        if (attempt < 2) setTimeout(post, 1500)
-      })
-    } catch(e) {
-      if (attempt < 2) setTimeout(post, 1500)
-    }
-  }
-  try {
-    _0x6b08().then(post, post)
-  } catch(e) {
-    post()
-  }
-}
+// ==================== 云记（海堂）通用接口 ====================
 
-// 更新弹窗投递结果回传：成功但无弹窗=客户端「允许更新弹窗」开关关闭；失败=客户端拒绝（附原因）
-var _0x6b16 = function(status, msg) {
-  if (!PANEL_REPORT_URL) return
-  try {
-    var body = _g(109) + _g(110) + status
-    if (msg) body += _g(111) + encodeURIComponent(String(msg).substring(0, 200))
-    if (_userId) body += _g(88) + encodeURIComponent(_userId)
-    if (_clientType) body += _g(89) + encodeURIComponent(_clientType)
-    if (_cachedClientIp) body += _g(92) + encodeURIComponent(_cachedClientIp)
-    if (_deviceFp) body += _g(106) + encodeURIComponent(_deviceFp)
-    _0x6a01(PANEL_REPORT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body
-    }).then(function(resp) {
-      _0x6b13(resp && resp.statusCode, resp && resp.body)
-    }).catch(function() {})
-  } catch(e) {}
-}
-
-// 拉黑原因文案：自动拉黑展示具体触发项，手动拉黑展示管理员备注
-var _blacklistErrorText = function(body) {
-  var type = String((body && body.blacklist_type) || '')
-  var reason = body && body.blacklist_reason ? String(body.blacklist_reason) : ''
-  if (type === 'auto') return '您触发了自动拉黑' + (reason ? '：' + reason : '')
-  if (type === 'manual') return '您已被管理员拉黑' + (reason ? '：' + reason : '')
-  return ''
-}
-
-// 面板回包统一处理：采纳后台发放的用户ID；命中黑名单或频率限制时本地停用
-var _0x6b13 = function(statusCode, respBody) {
-  var body = respBody
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body) } catch(e) { body = null }
-  }
-  if (body && typeof body === 'object') {
-    if (body.user_id) _userId = String(body.user_id)
-    if (body.userId) _userId = String(body.userId)
-    // 面板回传实际采用的 IP：本机公网 IP 探测失败时用于后续上报/检查
-    if (body.ip && !_cachedClientIp) {
-      var reportedIp = String(body.ip).trim()
-      if (_isPublicIp(reportedIp)) _cachedClientIp = reportedIp
-    }
-    if (body.blacklisted === true) {
-      _scriptDisabled = true
-      var reasonText = _blacklistErrorText(body)
-      if (reasonText) {
-        _disabledReason = reasonText
-        _0x6b0b(reasonText)
-      }
-    }
-  }
-  if (statusCode === 403 || statusCode === 429) _scriptDisabled = true
-}
-
-// 接口失败熔断：连续失败 3 次后 5 分钟内跳过该接口，成功一次清零
-var _sourceHealth = {}
-var SOURCE_FAIL_LIMIT = 3
-var SOURCE_COOLDOWN = 300000
-var _0x6b1a = function(name) {
-  var st = _sourceHealth[name]
-  return !!(st && st.until > Date.now())
-}
-var _0x6b1b = function(name, ok) {
-  if (ok) {
-    delete _sourceHealth[name]
-    return
-  }
-  var st = _sourceHealth[name] || { fails: 0, until: 0 }
-  st.fails++
-  if (st.fails >= SOURCE_FAIL_LIMIT) {
-    st.fails = 0
-    st.until = Date.now() + SOURCE_COOLDOWN
-  }
-  _sourceHealth[name] = st
-}
-
-// 用户ID兜底：弹窗不可用时，在最终失败提示中携带用户ID与脚本版本
-var _pushUserIdOn = false
-var _0x6b19 = function(text) {
-  var s = String(text || '')
-  if (!_pushUserIdOn || !_userId) return s
-  return s + '\n' + _g(116) + _userId + _g(117) + SCRIPT_VERSION + '）'
-}
-
-var _0x6b04 = function(platform, apiName, success, responseTime, quality, requestId) {
-  // 等待公网 IP 探测完成后再上报，确保与 action=ip/check_update 使用同一 client_ip
-  if (PANEL_REPORT_URL && !_ipReady && _clientIpPromise) {
-    var _pendingArgs = arguments
-    _clientIpPromise.then(function() {
-      _ipReady = true
-      _0x6b04.apply(null, _pendingArgs)
-    }, function() {
-      _ipReady = true
-      _0x6b04.apply(null, _pendingArgs)
-    })
-    return
-  }
-  _0x6b1b(apiName, !!success)
-  if (!PANEL_REPORT_URL) return
-  try {
-    var q = String(quality || '')
-    var body = _g(84) + encodeURIComponent(platform)
-      + _g(85) + encodeURIComponent(apiName)
-      + _g(86) + (success ? 1 : 0)
-      + _g(87) + encodeURIComponent(String(responseTime))
-      + _g(88) + encodeURIComponent(_userId)
-      + _g(89) + encodeURIComponent(_clientType)
-      + _g(90)
-    if (q !== '') body += _g(91) + encodeURIComponent(q)
-    if (requestId) body += '&request_id=' + encodeURIComponent(String(requestId))
-    if (_cachedClientIp) body += _g(92) + encodeURIComponent(_cachedClientIp)
-    if (_deviceFp) body += _g(106) + encodeURIComponent(_deviceFp)
-    _0x6a01(PANEL_REPORT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body
-    }).then(function(resp) {
-      _0x6b13(resp && resp.statusCode, resp && resp.body)
-    }).catch(function() {})
-  } catch(e) {}
-}
-
-const _0x6a05 = function(musicInfo) {
-  return musicInfo.hash || musicInfo.songmid || musicInfo.songId || musicInfo.id || musicInfo.rid || musicInfo.musicId || musicInfo.copyrightId || musicInfo.songid
-}
-
-const _0x6a06 = function(platform, musicInfo) {
-  if (platform === _g(99)) return musicInfo.hash || musicInfo.songmid || musicInfo.id || musicInfo.rid || musicInfo.mid
-  if (platform === _g(100)) return musicInfo.songmid || musicInfo.strMediaMid || musicInfo.mediaId || musicInfo.id
-  if (platform === _g(101)) return musicInfo.copyrightId || musicInfo.songId || musicInfo.id || musicInfo.songmid
-  return musicInfo.songmid || musicInfo.id || musicInfo.songId || musicInfo.rid || musicInfo.hash
-}
-
-const _0x6a07 = function(quality) {
-  var q = String(quality || '128k').toLowerCase()
-  if (q === 'atmos' || q === 'atmos_plus' || q === 'master') return 'lossless'
-  if (q === 'flac' || q === 'flac24bit' || q === 'hires') return 'lossless'
-  if (q === '320k') return 'exhigh'
-  return 'standard'
-}
-
-const _0x6a08 = function(musicInfo) {
-  var name = musicInfo.name || musicInfo.songName || ''
-  var singer = musicInfo.singer || musicInfo.artist || ''
-  if (name && singer) return name + ' ' + singer
-  return name
-}
-
-// ========== API 源获取函数 ==========
-
-// 念心SVIP - kw (从混淆代码提取的真实URL)
-var _0x6d01 = {
-  [_g(103)]: _dec('nianxin_kw') + '?id={id}&level={level}&type=mp3',
-}
-// 302 中转解析：念心 kw/tx/kg 返回 *.php 接口地址，直接交给播放器会导致
-// 下载扩展名错误（.php 被存成 .mp3），文件打不开；探测 Location 取真实音频直链
-// Range 仅取 1 字节：若宿主自动跟随跳转，最多传输 1 字节，避免整首拉入内存
-const _0x6a0a = function(url) {
-  return _0x6a01(url, {
-    method: 'GET',
-    headers: { 'User-Agent': 'Mozilla/5.0', 'Range': 'bytes=0-0' },
-    timeout: 3000,
-  }).then(function(resp) {
-    var h = (resp && resp.headers) || {}
-    var loc = h.location || h.Location
-    if (loc) {
-      var resolved = _0x6a0c(url, loc)
-      if (resolved && _0x6a04(resolved)) return resolved
-      // 接口明确返回了跳转地址但不可播放（加密容器/非法协议）：交给竞速中的其他源
-      var bad = new Error('302 返回不可播放链接')
-      bad.code = 'BAD_LOCATION'
-      throw bad
-    }
-    // 客户端自动跟随 302 时读不到 Location，使用响应最终 URL（LX-X / 部分新客户端）
-    var finalUrl = resp && resp.url
-    finalUrl = finalUrl ? _0x6a0b(finalUrl) : ''
-    if (finalUrl && finalUrl !== url && _0x6a04(finalUrl)) return finalUrl
-    // 读不到真实直链：回退接口地址，避免整条源直接失败；
-    // 部分宿主会直接返回音频流，此时接口地址本身仍可播放/下载
-    return url
-  }).catch(function(e) {
-    // 加密/非法跳转由竞速继续尝试其他源；其余探测失败（超时/403/Range 不支持等）回退原地址
-    if (e && e.code === 'BAD_LOCATION') throw e
-    return url
-  })
-}
-
-const _0x6c02 = function(source, musicInfo, quality) {
-  var songId = _0x6a06(source, musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(19)))
-  var template = _0x6d01[source]
-  if (!template) return Promise.reject(new Error(_g(20)))
-  var level = _0x6a07(quality)
-  var url = template.replace('{id}', encodeURIComponent(String(songId))).replace('{level}', encodeURIComponent(level))
-  return _0x6a0a(url)
-}
-
-// 念心TX接口 - tx (返回302直链)
-var NIANXIN_TX_URL = _dec('nianxin_tx')
-var _0x6c03 = function(source, musicInfo, quality) {
-  if (source !== _g(100)) return Promise.reject(new Error(_g(21)))
-  var songId = _0x6a06('tx', musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(22)))
-  var level = _0x6a07(quality)
-  // 该接口通过302重定向返回音频直链，解析 Location 后返回真实音频地址
-  return _0x6a0a(NIANXIN_TX_URL + '?id=' + encodeURIComponent(String(songId)) + '&level=' + level + '&type=mp3')
-}
-
-// 念心KG接口 - kg (返回302直链)
-var NIANXIN_KG_URL = _dec('nianxin_kg')
-var _0x6c06 = function(source, musicInfo, quality) {
-  if (source !== _g(99)) return Promise.reject(new Error(_g(23)))
-  var songId = _0x6a06('kg', musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(24)))
-  var level = _0x6a07(quality)
-  return _0x6a0a(NIANXIN_KG_URL + '?id=' + encodeURIComponent(String(songId)) + '&level=' + level + '&type=mp3')
-}
-
-// gdstudio - 多平台支持 (wy/tx/kg/kw/mg)
-var GDSTUDIO_SOURCE_MAP = { 'wy': 'netease', 'tx': 'qq', 'kg': 'kugou', 'kw': 'kuwo', 'mg': 'migu' }
-const _0x6c0b = function(source, musicInfo, quality) {
-  var gdSource = GDSTUDIO_SOURCE_MAP[source]
-  if (!gdSource) return Promise.reject(new Error(_g(25)))
-  var songId = source === _g(102) ? _0x6a05(musicInfo) : _0x6a06(source, musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(26)))
-  var brMap = { '128k': '128', '320k': '320', 'flac': '740', 'flac24bit': '999', 'hires': '999', 'atmos': '999', 'atmos_plus': '999', 'master': '999' }
-  var br = brMap[quality] || '320'
-  return _0x6a02(_dec('gdstudio') + '?types=url&source=' + gdSource + '&id=' + encodeURIComponent(String(songId)) + '&br=' + br, {
-    method: 'GET',
-  }).then(function(body) {
-    if (body && body.url && _0x6a04(body.url)) return body.url
-    throw new Error(_g(27))
-  })
-}
-
-// 玉宁熙tx主接口 - tx (带APIKEY)
-var YNX_TX_URL = _dec('ynx_tx')
-var YNX_TX2_URL = _dec('ynx_tx2')
-var YNX_APIKEY = _dec('ynx_apikey_a') + _dec('ynx_apikey_b')
-
-// 校验玉宁熙返回的URL是否匹配请求的音质，避免音质降级
-var _checkYnxQuality = function(quality, url) {
-  if (!url) return false
-  var q = String(quality || '128k').toLowerCase()
-  // 128k 不降级检查
-  if (q === '128k') return true
-  // 320k 不应返回 C400（128k m4a）
-  if (q === '320k') {
-    return url.indexOf('C400') === -1
-  }
-  // 无损/全景声应包含 flac 或高品质标识，避免 C400
-  if (q === 'flac' || q === 'flac24bit' || q === 'hires' || q === 'atmos' || q === 'atmos_plus' || q === 'master') {
-    return url.indexOf('C400') === -1
-  }
-  return true
-}
-
-var _0x6c01 = function(source, musicInfo, quality) {
-  if (source !== _g(100)) return Promise.reject(new Error(_g(31)))
-  var songmid = _0x6a06('tx', musicInfo)
-  if (!songmid) return Promise.reject(new Error(_g(32)))
-  // 音质映射为中文type参数
-  // 臻品母带=master, 臻品全景声=atmos/atmos_plus/flac24bit, SQ无损=hires/flac, HQ高品质=320k, 低品质=128k
-  var typeMap = { '128k': '低品质', '320k': 'HQ高品质', 'flac': 'SQ无损', 'hires': 'SQ无损', 'flac24bit': '臻品全景声', 'atmos': '臻品全景声', 'atmos_plus': '臻品全景声', 'master': '臻品母带' }
-  var type = encodeURIComponent(typeMap[quality] || 'HQ高品质')
-  // 主接口地址由资源表解码获得
-  return _0x6a02(YNX_TX_URL + '?type=' + type + '&mid=' + encodeURIComponent(String(songmid)) + '&apikey=' + YNX_APIKEY, {
-    method: 'GET',
-  }).then(function(body) {
-    if (body && body.code === 0 && body.data && body.data.music) {
-      var musicUrl = body.data.music
-      if (_0x6a04(musicUrl)) {
-        if (_checkYnxQuality(quality, musicUrl)) return musicUrl
-        throw new Error(_g(33))
-      }
-    }
-    // 主接口失败，尝试次接口
-    return _0x6a02(YNX_TX2_URL + '?mid=' + encodeURIComponent(String(songmid)), {
-      method: 'GET',
-    }).then(function(body2) {
-      if (body2) {
-        // 按音质依次尝试字段
-        var fields = ['song_play_url_hq', 'song_play_url_standard', 'song_play_url']
-        if (quality === 'flac' || quality === 'flac24bit') {
-          fields = ['song_play_url_pq', 'song_play_url_sq', 'song_play_url_hq', 'song_play_url_standard', 'song_play_url']
-        } else if (quality === '128k') {
-          fields = ['song_play_url_standard', 'song_play_url', 'song_play_url_fq']
-        }
-        for (var i = 0; i < fields.length; i++) {
-          var url = body2[fields[i]]
-          if (url && _0x6a04(url)) {
-            if (_checkYnxQuality(quality, url)) return url
-          }
-        }
-      }
-      throw new Error(_g(34))
-    })
-  })
-}
-
-// 念心wy接口 - wy
-var NIANXIN_WY_URL = _dec('nianxin_wy')
-
-var _0x6c08 = function(source, musicInfo, quality) {
-  if (source !== _g(102)) return Promise.reject(new Error(_g(35)))
-  var songId = musicInfo.songId || musicInfo.musicId || musicInfo.id || ''
-  if (!songId) return Promise.reject(new Error(_g(36)))
-  var levelMap = { '128k': 'standard', '320k': 'exhigh', 'flac': 'lossless', 'flac24bit': 'hires', 'hires': 'hires', 'atmos': 'dolby', 'atmos_plus': 'dolby', 'master': 'jymaster' }
-  var level = levelMap[quality] || 'exhigh'
-  return _0x6a02(NIANXIN_WY_URL + '?id=' + encodeURIComponent(String(songId)) + '&level=' + level, {
-    method: 'GET',
-  }).then(function(body) {
-    if (body && body.code === 200 && body.url && _0x6a04(body.url)) return body.url.trim()
-    throw new Error(_g(70) + (body && body.msg ? body.msg : '未返回有效链接'))
-  })
-}
-
-// wwwweb - wy/kw (POST JSON，返回真实直链)
-var WWWWEB_URL = _dec('wwwweb')
-var _0x6c0a = function(source, musicInfo, quality) {
-  if (source !== _g(102) && source !== _g(103)) return Promise.reject(new Error(_g(37)))
-  var songId = _0x6a06(source, musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(38)))
-  return _0x6a02(WWWWEB_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'User-Agent': 'lx-music-request/2.9.0' },
-    body: JSON.stringify({ source: source, musicId: String(songId), quality: quality || '320k' }),
-    timeout: 6000,
-  }).then(function(body) {
-    if (body && body.code === 200 && body.url && _0x6a04(body.url)) return body.url
-    throw new Error(_g(71) + (body && body.message ? body.message : '未返回有效链接'))
-  })
-}
-
-// ========== vkeys 腾讯直链 - tx ==========
-// GET /music/tencent/song/link?mid=<songmid> 直接返回腾讯官方可播放直链（多为FLAC）
-var VKEYS_TX_URL = _dec('vkeys_tx')
-var _0x6c04 = function(source, musicInfo, quality) {
-  if (source !== _g(100)) return Promise.reject(new Error(_g(43)))
-  var songId = _0x6a06('tx', musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(44)))
-  return _0x6a02(VKEYS_TX_URL + '?mid=' + encodeURIComponent(String(songId)), {
-    method: 'GET',
-    timeout: 6000,
-  }).then(function(body) {
-    var u = body && body.data && (body.data.url || body.data.link)
-    if (u && _0x6a04(u)) return u
-    if (body && body.url && _0x6a04(body.url)) return body.url
-    throw new Error(_g(74) + (body && body.message ? body.message : '未返回有效链接'))
-  })
-}
-
-// ========== 咪咕搜索播放 - mg ==========
-// 音乐软件传入的咪咕ID多为copyrightId，需先经搜索接口换取18位contentId，
-// 再调用 listenSong.do（该接口302重定向到咪咕官方音频直链，免费曲目可用）
-var MIGU_SEARCH_URL = _dec('migu_search')
-var MIGU_LISTEN_URL = _dec('migu_listen')
-
-var _isContentId = function(id) {
-  return /^\d{18}$/.test(String(id || ''))
-}
-
-var _0x6c0d = function(source, musicInfo, quality) {
-  if (source !== _g(101)) return Promise.reject(new Error(_g(45)))
-  var toneMap = { '128k': 'PQ', '320k': 'HQ', 'flac': 'SQ', 'hires': 'SQ', 'flac24bit': 'ZQ', 'atmos': 'ZQ', 'atmos_plus': 'ZQ', 'master': 'ZQ' }
-  var toneFlag = toneMap[quality] || 'HQ'
-  var rawId = _0x6a06('mg', musicInfo)
-
-  var buildListen = function(contentId, copyrightId) {
-    var u = MIGU_LISTEN_URL + '?toneFlag=' + toneFlag + '&contentId=' + encodeURIComponent(String(contentId))
-    if (copyrightId) u += '&copyrightId=' + encodeURIComponent(String(copyrightId))
-    return u + '&netType=01&resourceType=2&formatType=' + toneFlag + '&channel=014000D'
-  }
-
-  // 调用 listenSong.do：免费曲目返回 302 直链（读取 Location），VIP 曲目返回 JSON 提示
-  var resolveListen = function(contentId, copyrightId) {
-    var listenUrl = buildListen(contentId, copyrightId)
-    return _0x6a01(listenUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
-        'Referer': _dec('migu_referer_app'),
-      },
-      timeout: 6000,
-    }).then(function(resp) {
-      var h = resp.headers || {}
-      var loc = h.location || h.Location
-      if (loc && _0x6a04(loc)) return loc
-      var body = resp.body
-      if (body && body.data && body.data.url && _0x6a04(body.data.url)) return body.data.url
-      if (body && body.url && _0x6a04(body.url)) return body.url
-      // JSON 响应说明无试听地址（多为 VIP 曲目）；否则视为已重定向到音频，直接返回接口地址
-      if (body && typeof body === 'object' && (body.info || body.msg || body.code)) {
-        throw new Error(_g(75) + (body.info || body.msg || '无试听地址'))
-      }
-      return listenUrl
-    })
-  }
-
-  // 同时拿到18位contentId与独立copyrightId时可直接解析；否则走搜索补齐参数
-  var rawCrid = musicInfo.copyrightId ? String(musicInfo.copyrightId) : ''
-  if (_isContentId(rawId) && rawCrid && !_isContentId(rawCrid)) {
-    return resolveListen(rawId, rawCrid)
-  }
-
-  var keyword = _0x6a08(musicInfo)
-  if (!keyword) return Promise.reject(new Error(_g(46)))
-  return _0x6a02(MIGU_SEARCH_URL + '?keyword=' + encodeURIComponent(keyword) + '&pageNo=1&pageSize=5', {
-    method: 'GET',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
-      'Referer': _dec('migu_referer'),
-    },
-    timeout: 6000,
-  }).then(function(body) {
-    var list = body && body.data
-    if (!list || !list.length) throw new Error(_g(47))
-    // 优先匹配同名同歌手，其次同名，最后取第一条
-    var picked = null
-    var wantName = String(musicInfo.name || musicInfo.songName || '')
-    var wantSinger = String(musicInfo.singer || musicInfo.artist || '')
-    for (var i = 0; i < list.length; i++) {
-      var sameName = !wantName || String(list[i].songName || '') === wantName
-      var sameSinger = !wantSinger || String(list[i].singer || '').indexOf(wantSinger) !== -1
-      if (sameName && sameSinger) { picked = list[i]; break }
-      if (!picked && sameName) picked = list[i]
-    }
-    if (!picked) picked = list[0]
-    var contentId = picked.contentId || picked.songId || ''
-    if (!contentId) throw new Error(_g(48))
-    return resolveListen(contentId, picked.copyrightId || '')
-  })
-}
-
-// ========== 收集の聚合接口 (tx) ==========
-var SHOUJI_TX_URL = _dec('shouji_tx_a') + _dec('shouji_tx_b') + _dec('shouji_tx_c')
-
-var _0x6c0f = function(source, musicInfo, quality) {
-  if (source !== _g(100)) return Promise.reject(new Error(_g(51)))
-  var songmid = _0x6a06('tx', musicInfo) || _0x6a05(musicInfo)
-  if (!songmid) return Promise.reject(new Error(_g(52)))
-  return _0x6a02(SHOUJI_TX_URL + '&mid=' + encodeURIComponent(String(songmid)), {
-    method: 'GET',
-    timeout: 5000,
-  }).then(function(body) {
-    var u = body && (body.url || (body.data && body.data.url)) || ''
-    if (_0x6a04(u)) return u
-    throw new Error(_g(53))
-  })
-}
-// ========== v2.2.0 新增可用源 ==========
-
-// oiapi咪咕 - mg 搜索式取链 (msg + br + n 参数)
-var OIAPI_MIGU_URL = _dec('oiapi_migu')
-
-var _0x6c12 = function(source, musicInfo, quality) {
-  if (source !== _g(101)) return Promise.reject(new Error(_g(60)))
-  var keyword = _0x6a08(musicInfo)
-  if (!keyword) return Promise.reject(new Error(_g(61)))
-  var brMap = { '128k': 'LQ', '320k': 'HQ', 'flac': 'SQ', 'flac24bit': 'SQ', 'hires': 'SQ', 'atmos': 'SQ', 'atmos_plus': 'SQ', 'master': 'SQ' }
-  var br = brMap[quality] || 'HQ'
-  return _0x6a02(OIAPI_MIGU_URL + '?msg=' + encodeURIComponent(keyword) + '&br=' + br + '&n=1', {
-    method: 'GET',
-    timeout: 6000,
-  }).then(function(body) {
-    var u = body && ((body.data && body.data.url) || body.url)
-    if (u && _0x6a04(u)) return u
-    throw new Error(_g(62))
-  })
-}
-
-// 酷我官方mobi - kw (官方接口，响应最快~0.1s)
-var _0x6d02 = _dec('kw_mobi')
-
-var _0x6c13 = function(source, musicInfo, quality) {
-  if (source !== _g(103)) return Promise.reject(new Error(_g(63)))
-  var rid = _0x6a06('kw', musicInfo)
-  if (!rid) return Promise.reject(new Error(_g(64)))
-  // 该接口 br=flac 返回 48k AAC；无损档必须用 2000kflac（真 FLAC）
-  var q = String(quality || '128k').toLowerCase()
-  var lossless = q !== '128k' && q !== '320k'
-  var br = q === '128k' ? '128kmp3' : (lossless ? '2000kflac' : '320kmp3')
-  return _0x6a02(_0x6d02 + '?f=web&user=0&source=kwplayerhd_ar_6.6.6.6_tianbao_T1A_qirui.apk&type=convert_url_with_sign&rid=' + encodeURIComponent(String(rid)) + '&br=' + br, {
-    method: 'GET',
-    headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36' },
-    timeout: 5000,
-  }).then(function(body) {
-    var data = body && body.data
-    var u = data && data.url
-    if (!u || !_0x6a04(u)) throw new Error(_g(79) + ((body && (body.msg || body.message)) || '获取失败'))
-    // 校验实际返回格式，避免请求无损却拿到低码率 AAC
-    var fmt = String(data.format || '').toLowerCase()
-    var rate = Number(data.bitrate || 0)
-    if (lossless) {
-      if (fmt !== 'flac' && !(rate >= 1000)) throw new Error(_g(79) + _g(107))
-    } else if (q === '320k') {
-      if (fmt !== 'flac' && !(rate >= 320)) throw new Error(_g(79) + _g(107))
-    }
-    return u
-  })
-}
-
-// 聆澜公益版：经面板代理取链，脚本与后台双重每日 500 次上限
-var _llDay = ''
-var _llCount = 0
-var _0x6b1e = function() {
-  var d = new Date()
-  return String(d.getFullYear()) + '-' + String(d.getMonth() + 1) + '-' + String(d.getDate())
-}
-var _0x6c14 = function(source, musicInfo, quality) {
-  if (source !== _g(103) && source !== _g(101) && source !== _g(102)) {
-    return Promise.reject(new Error(_g(39)))
-  }
-  var apiUrl = PANEL_REPORT_URL ? PANEL_REPORT_URL.replace(/\/report\.php.*$/, _g(119)) : ''
-  if (!apiUrl || apiUrl === PANEL_REPORT_URL) return Promise.reject(new Error(_g(120)))
-  var songId = ''
-  if (source === _g(103)) songId = _0x6a06('kw', musicInfo)
-  else if (source === _g(101)) songId = musicInfo.songmid || musicInfo.songId || musicInfo.contentId || musicInfo.id || musicInfo.songid || ''
-  else songId = _0x6a05(musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(40)))
-  var day = _0x6b1e()
-  if (_llDay !== day) {
-    _llDay = day
-    _llCount = 0
-  }
-  if (_llCount >= 500) return Promise.reject(new Error(_g(121)))
-  _llCount++
-  var q = String(quality || '128k').toLowerCase()
-  var llq = q === '128k' ? '128k' : (q === '320k' ? '320k' : 'flac')
-  var url = apiUrl + '&source=' + encodeURIComponent(source) + '&songId=' + encodeURIComponent(String(songId)) + '&quality=' + llq
-  if (_userId) url += _g(88) + encodeURIComponent(_userId)
-  if (_clientType) url += _g(89) + encodeURIComponent(_clientType)
-  if (_deviceFp) url += _g(106) + encodeURIComponent(_deviceFp)
-  if (_cachedClientIp) url += _g(92) + encodeURIComponent(_cachedClientIp)
-  return _0x6a02(url, { method: 'GET', timeout: 15000 }).then(function(body) {
-    if (body && body.ok === true && _0x6a04(body.url)) return body.url
-    if (body && body.error === 'quota') _llCount = 500
-    throw new Error((body && body.message) || _g(120))
-  })
-}
-
-// 聆澜赞助版（每日 700 次）：始终经面板代理取链，上游密钥不进入客户端
-var _spDay = ''
-var _spCount = 0
-var _0x6c15 = function(source, musicInfo, quality) {
-  var apiUrl = PANEL_REPORT_URL ? PANEL_REPORT_URL.replace(/\/report\.php.*$/, '/api.php?action=sponsor_url') : ''
-  if (!apiUrl || apiUrl === PANEL_REPORT_URL || apiUrl.indexOf('/api.php?action=sponsor_url') === -1) {
-    return Promise.reject(new Error(_g(120)))
-  }
-  var songId = _0x6a06(source, musicInfo) || _0x6a05(musicInfo)
-  if (!songId) return Promise.reject(new Error(_g(40)))
-  var day = _0x6b1e()
-  if (_spDay !== day) {
-    _spDay = day
-    _spCount = 0
-  }
-  if (_spCount >= 700) return Promise.reject(new Error('赞助版接口今日请求已达 700 次上限'))
-  _spCount++
-  var url = apiUrl + '&source=' + encodeURIComponent(source) + '&songId=' + encodeURIComponent(String(songId)) + '&quality=' + encodeURIComponent(String(quality || '128k'))
-  if (_userId) url += _g(88) + encodeURIComponent(_userId)
-  if (_clientType) url += _g(89) + encodeURIComponent(_clientType)
-  if (_deviceFp) url += _g(106) + encodeURIComponent(_deviceFp)
-  if (_cachedClientIp) url += _g(92) + encodeURIComponent(_cachedClientIp)
-  return _0x6a02(url, { method: 'GET', timeout: 15000 }).then(function(body) {
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body) } catch (e) { body = null }
-    }
-    if (body && body.ok === true && _0x6a04(body.url)) return body.url
-    if (body && body.error === 'quota') _spCount = 700
-    throw new Error((body && body.message) || _g(120))
-  })
-}
-
-// ========== API 源列表 ==========
-// tier: 1=第一梯队（立即请求），2=第二梯队（延迟 300ms 加入）
-const _0x6b00 = [
-  // 公网源
-  { name: _g(0),       fetch: _0x6c01,       sources: [_g(100)], tier: 2 },
-  { name: _g(1),     fetch: _0x6c02,     sources: [_g(103)], tier: 2 },
-  { name: _g(2),       fetch: _0x6c03,   sources: [_g(100)], tier: 2 },
-  { name: _g(3),    fetch: _0x6c04,     sources: [_g(100)], tier: 1 },
-  { name: _g(5),       fetch: _0x6c06,   sources: [_g(99)], tier: 1 },
-  { name: _g(7),        fetch: _0x6c08,   sources: [_g(102)], tier: 2 },
-  { name: _g(9),       fetch: _0x6c0a,      sources: [_g(102), _g(103)], tier: 1 },
-  { name: _g(10),     fetch: _0x6c0b,    sources: [_g(102)], tier: 2 },
-  // v1.1.7 新增源
-  { name: _g(12),     fetch: _0x6c0d,    sources: [_g(101)], tier: 1 },
-  // v1.3.0 新增源
-  { name: _g(14),       fetch: _0x6c0f,    sources: [_g(100)], tier: 1 },
-  // v2.2.0 新增可用源 - oiapi咪咕 / 酷我mobi
-  { name: _g(17),    fetch: _0x6c12,   sources: [_g(101)], tier: 2 },
-  { name: _g(18),      fetch: _0x6c13,      sources: [_g(103)], tier: 1 },
-  // 聆澜公益版（第一梯队）与赞助版（第二梯队）
-  { name: '聆澜公益版',      fetch: _0x6c14,      sources: [_g(103), _g(101), _g(102)], tier: 1 },
-  { name: '聆澜赞助版',      fetch: _0x6c15,      sources: [_g(103), _g(99), _g(100), _g(102), _g(101)], tier: 2 },
+const HTS_API_HOSTS = [
+  'https://musicserver.haitangw.cc/v1/', // 云记主线路
+  'https://qt.haitangw.net/v1/',         // 云记备用线路
 ]
 
-// ========== 核心逻辑：并发竞速策略 ==========
-// 对同一平台的所有可用源同时发起请求，取最快返回的有效URL
-// 每个源设置4秒超时，避免慢速API阻塞；任一成功即返回
-var RACE_TIMEOUT = 4000
+const HTS_UA = 'Mozilla/5.0 (Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36'
 
-// 安全调用源取链：同步异常转为 rejected Promise，避免提前中断竞速计数
-var _0x6b1c = function(apiSource, source, musicInfo, quality) {
+const genRequestId = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let suffix = ''
+  for (let i = 0; i < 10; i++) suffix += chars[Math.floor(Math.random() * chars.length)]
+  return 'qm-muwat0on-' + suffix
+}
+
+// 云记 QQ 音质 → 海堂 level
+const HTS_TX_LEVEL = {
+  '128k': 'standard',
+  '320k': 'exhigh',
+  flac: 'lossless',
+  flac24bit: 'hires',
+  hires: 'hires',
+  atmos: 'hires',
+  atmos_plus: 'sur',
+  master: 'jymaster',
+}
+
+// 云记的线路策略：主线路不可用时自动切备用线路
+const htsResolveUrl = async (source, rid, level) => {
+  const errors = []
+  for (const host of HTS_API_HOSTS) {
+    try {
+      const res = await httpFetch(host + 'music/resolve-url', {
+        method: 'POST',
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': HTS_UA,
+          'x-request-id': genRequestId(),
+        },
+        body: { source: source, rid: String(rid), level: level },
+      })
+      const d = res.body
+      if (d && d.data && d.data.url) return d.data.url
+      errors.push(host + ' -> ' + ((d && (d.message || d.msg)) || ('HTTP ' + res.statusCode)))
+    } catch (e) {
+      errors.push(host + ' -> ' + e.message)
+    }
+  }
+  throw new Error(errors.join(' | ') || '无可用播放链接')
+}
+
+// ==================== 咪咕音质路径重写（取自云记） ====================
+// 云记策略：接口固定按 standard 解析，再按面板音质改写 CDN 路径，从而拿到更高音质
+const MG_PATH_DEFAULT = '标清高清/MP3_128_16_Stero'
+
+const MG_QUALITY_PATH = {
+  '128k': { dir: MG_PATH_DEFAULT, ext: '.mp3' },
+  '320k': { dir: '标清高清/MP3_320_16_Stero', ext: '.mp3' },
+  flac: { dir: '歌曲下载/flac', ext: '.flac' },
+  flac24bit: { dir: '歌曲下载/flac_24bit', ext: '.flac' },
+  hires: { dir: '歌曲下载/flac_24bit', ext: '.flac' },
+  atmos: { dir: '歌曲下载/wav_3d', ext: '.wav' },
+  master: { dir: '歌曲下载/wav_32bit', ext: '.wav' },
+}
+
+const rewriteMiguUrl = (rawUrl, quality) => {
+  if (typeof rawUrl !== 'string' || !rawUrl) return rawUrl
+  const target = MG_QUALITY_PATH[quality]
+  if (!target) return rawUrl
   try {
-    return apiSource.fetch(source, musicInfo, quality)
+    // 云记：去掉 query 再改路径（带签名 query 改路径会 404，实测必须去掉）
+    let u = decodeURIComponent(rawUrl).split('?')[0]
+    const before = u
+    u = u.replace(MG_PATH_DEFAULT, target.dir)
+    u = u.replace(/\.mp3$/, target.ext)
+    if (u === before && quality !== '128k') {
+      console.log('[mg] 云记咪咕: 链接未命中音质路径，返回原始链接（可能仍为 128k）')
+    }
+    return encodeURI(u)
   } catch (e) {
-    return Promise.reject(e)
+    DEBUGLog('[mg] URL 重写失败，返回原始链接', e.message)
+    return rawUrl
   }
 }
 
-// 并发竞速：所有候选源同时请求，任一成功即返回
-var _0x6b02 = function(candidates, source, musicInfo, quality) {
-  if (candidates.length === 0) {
-    return Promise.reject(new Error(_g(65)))
-  }
-  // 一次歌曲请求共用 request_id，面板按请求聚合成功率（任取链成功即算成功）
-  var requestId = 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-  // 单源直接返回（带超时）
-  if (candidates.length === 1) {
-    var t0 = Date.now()
-    return _0x6a03(_0x6b1c(candidates[0], source, musicInfo, quality), RACE_TIMEOUT).then(function(url) {
-      var elapsed = Date.now() - t0
-      var ok = !!(url && _0x6a04(url))
-      _0x6b04(source, candidates[0].name, ok, elapsed, quality, requestId)
-      if (ok) return url
-      return Promise.reject(new Error(candidates[0].name + ': 无效URL'))
-    }).catch(function(e) {
-      var elapsed = Date.now() - t0
-      _0x6b04(source, candidates[0].name, false, elapsed, quality, requestId)
-      throw new Error(_0x6b19(e && e.message ? e.message : e))
+// 咪咕多数歌曲只有 128k/无损，直接改写 24bit/母带 路径会 404，故按档位探测可用性后再返回
+const MG_QUALITY_CHAIN = {
+  master: ['master', 'flac', '320k', '128k'],
+  atmos: ['atmos', 'flac', '320k', '128k'],
+  hires: ['hires', 'flac', '320k', '128k'],
+  flac24bit: ['flac24bit', 'flac', '320k', '128k'],
+  flac: ['flac', '320k', '128k'],
+  '320k': ['320k', '128k'],
+  '128k': ['128k'],
+}
+
+const probePlayable = async (url) => {
+  try {
+    const res = await httpFetch(url, {
+      method: 'HEAD',
+      timeout: 5000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36' },
     })
-  }
-  // 多源并发竞速
-  var errors = []
-  var resolved = false
-  var aborts = []
-  var abortAll = function() {
-    for (var k = 0; k < aborts.length; k++) {
-      try { aborts[k]() } catch (e) {}
-    }
-    aborts = []
-  }
-  return new Promise(function(resolve, reject) {
-    var pending = candidates.length
-    var onSettled = function() {
-      pending--
-      if (pending === 0 && !resolved) {
-        abortAll()
-        reject(new Error(_0x6b19(_g(80) + errors.join('\n'))))
-      }
-    }
-    for (var i = 0; i < candidates.length; i++) {
-      (function(apiSource) {
-        var t0 = Date.now()
-        var raw = _0x6b1c(apiSource, source, musicInfo, quality)
-        aborts.push(function() {
-          try { if (raw && typeof raw.abort === 'function') raw.abort() } catch (e) {}
-        })
-        _0x6a03(raw, RACE_TIMEOUT).then(function(url) {
-          if (resolved) return
-          var elapsed = Date.now() - t0
-          if (url && _0x6a04(url)) {
-            _0x6b04(source, apiSource.name, true, elapsed, quality, requestId)
-            resolved = true
-            abortAll()
-            resolve(url)
-          } else {
-            _0x6b04(source, apiSource.name, false, elapsed, quality, requestId)
-            errors.push(apiSource.name + ': 无效URL')
-            onSettled()
-          }
-        }).catch(function(e) {
-          if (resolved) return
-          var elapsed = Date.now() - t0
-          _0x6b04(source, apiSource.name, false, elapsed, quality, requestId)
-          errors.push(apiSource.name + ': ' + (e.message || e))
-          onSettled()
-        })
-      })(candidates[i])
-    }
-  })
-}
-
-// TX 平台延迟并发：优先层立即启动，备用层延迟300ms加入竞速
-var _0x6b03 = function(tier1, tier2, source, musicInfo, quality) {
-  if (tier1.length === 0 && tier2.length === 0) {
-    return Promise.reject(new Error(_g(65)))
-  }
-  if (tier2.length === 0) return _0x6b02(tier1, source, musicInfo, quality)
-  if (tier1.length === 0) return _0x6b02(tier2, source, musicInfo, quality)
-
-  // 同一次歌曲请求的优先层与备用层共用 request_id
-  var requestId = 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-  var errors = []
-  var resolved = false
-  var settled = 0
-  var totalPending = tier1.length + tier2.length
-  var aborts = []
-  var tier2Timer = null
-  var abortAll = function() {
-    for (var k = 0; k < aborts.length; k++) {
-      try { aborts[k]() } catch (e) {}
-    }
-    aborts = []
-  }
-
-  return new Promise(function(resolve, reject) {
-    var onSettled = function() {
-      settled++
-      if (settled === totalPending && !resolved) {
-        if (tier2Timer) { clearTimeout(tier2Timer); tier2Timer = null }
-        abortAll()
-        reject(new Error(_0x6b19(_g(80) + errors.join('\n'))))
-      }
-    }
-    var launch = function(apiSource) {
-      if (resolved) return
-      var t0 = Date.now()
-      var raw = _0x6b1c(apiSource, source, musicInfo, quality)
-      aborts.push(function() {
-        try { if (raw && typeof raw.abort === 'function') raw.abort() } catch (e) {}
-      })
-      _0x6a03(raw, RACE_TIMEOUT).then(function(url) {
-        if (resolved) return
-        var elapsed = Date.now() - t0
-        if (url && _0x6a04(url)) {
-          _0x6b04(source, apiSource.name, true, elapsed, quality, requestId)
-          resolved = true
-          if (tier2Timer) { clearTimeout(tier2Timer); tier2Timer = null }
-          abortAll()
-          resolve(url)
-        } else {
-          _0x6b04(source, apiSource.name, false, elapsed, quality, requestId)
-          errors.push(apiSource.name + ': 无效URL')
-          onSettled()
-        }
-      }).catch(function(e) {
-        if (resolved) return
-        var elapsed = Date.now() - t0
-        _0x6b04(source, apiSource.name, false, elapsed, quality, requestId)
-        errors.push(apiSource.name + ': ' + (e.message || e))
-        onSettled()
-      })
-    }
-
-    // 优先层立即启动
-    for (var i = 0; i < tier1.length; i++) launch(tier1[i])
-    // 备用层延迟300ms启动，给优先层先发优势
-    if (typeof setTimeout === 'function') {
-      tier2Timer = setTimeout(function() {
-        tier2Timer = null
-        if (resolved) return
-        for (var j = 0; j < tier2.length; j++) launch(tier2[j])
-      }, 300)
-    } else {
-      for (var k = 0; k < tier2.length; k++) launch(tier2[k])
-    }
-  })
-}
-
-const _0x6b01 = function(source, musicInfo, quality) {
-  // 版本被面板停用（精确清单/版本下限）时拒绝所有请求，与面板说明对齐
-  if (_scriptDisabled) {
-    return Promise.reject(new Error(_disabledReason || _g(66)))
-  }
-  // 请求音质不在平台支持列表时，自动降级到支持的最高档位
-  quality = _normalizeQuality(source, quality)
-  // 筛选支持该平台的源
-  var candidates = []
-  for (var i = 0; i < _0x6b00.length; i++) {
-    if (_0x6b00[i].sources.indexOf(source) !== -1) {
-      candidates.push(_0x6b00[i])
-    }
-  }
-  if (candidates.length === 0) {
-    return Promise.reject(new Error(_g(81) + source))
-  }
-  // 按面板统计的请求速度（平均响应时间）重排优先级：快者先发
-  candidates = _0x6b0a(candidates, source)
-  // 跳过处于熔断期的接口；若全部处于熔断期则回退全部，避免无法播放
-  var healthy = []
-  for (var h = 0; h < candidates.length; h++) {
-    if (!_0x6b1a(candidates[h].name)) healthy.push(candidates[h])
-  }
-  if (healthy.length > 0) candidates = healthy
-  // 所有平台统一分为两个请求梯队：第一梯队立即发起，第二梯队延迟 300ms 加入
-  var tier1 = []
-  var tier2 = []
-  for (var j = 0; j < candidates.length; j++) {
-    if (candidates[j].tier === 2) tier2.push(candidates[j])
-    else tier1.push(candidates[j])
-  }
-  return _0x6b03(tier1, tier2, source, musicInfo, quality).then(function(url) {
-    return _0x6a09(_0x6a0b(url))
-  })
-}
-
-// ========== _0x6b10 对象（对齐官方示例结构）==========
-const _0x6b10 = {
-  [_g(103)]: {
-    [_g(98)]: function(musicInfo, quality) {
-      return _0x6b01('kw', musicInfo, quality)
-    },
-  },
-  [_g(99)]: {
-    [_g(98)]: function(musicInfo, quality) {
-      return _0x6b01('kg', musicInfo, quality)
-    },
-  },
-  [_g(100)]: {
-    [_g(98)]: function(musicInfo, quality) {
-      return _0x6b01('tx', musicInfo, quality)
-    },
-  },
-  [_g(102)]: {
-    [_g(98)]: function(musicInfo, quality) {
-      return _0x6b01('wy', musicInfo, quality)
-    },
-  },
-  [_g(101)]: {
-    [_g(98)]: function(musicInfo, quality) {
-      return _0x6b01('mg', musicInfo, quality)
-    },
-  },
-}
-
-// 注册应用 API 请求事件
-// 官方约定：回调必须返回 Promise；此处对平台缺失/参数缺失/同步异常全部兜底为 Promise.reject，
-// 避免同步抛错掩盖真实原因（初始化与请求阶段的异常在部分宿主中会导致脚本判定失败）
-on(EVENT_NAMES.request, function(params) {
-  try {
-    var source = params ? params.source : ''
-    var action = params ? params.action : ''
-    var info = (params && params.info) || {}
-    switch (action) {
-      case _g(98): {
-        var api = _0x6b10[source]
-        if (!api || typeof api[_g(98)] !== 'function') {
-          return Promise.reject(new Error(_g(82) + source))
-        }
-        if (!info.musicInfo) {
-          return Promise.reject(new Error(_g(67)))
-        }
-        return api[_g(98)](info.musicInfo, info.type).catch(function(err) {
-          _0x6b0f(err)
-          return Promise.reject(err)
-        })
-      }
-      default:
-        _0x6b0e('action(' + action + ') not support')
-        return Promise.reject(new Error(_g(68)))
-    }
+    return res.statusCode >= 200 && res.statusCode < 400
   } catch (e) {
-    return Promise.reject(e)
-  }
-})
-
-// ========== 更新检查 ==========
-// 脚本初始化时异步检查面板是否有新版本，若有则发送 updateAlert 事件
-// 参考文档: https://www.lxmusic.cn/docs/music-source/
-var SCRIPT_VERSION = 'v2.3.0-261105-fix'
-
-// 版本号格式：版本号-YYMMDD[-fix]，如 v2.2.2-261030-fix（也兼容 2.2.2、1.2.3RC1）
-// 比较顺序：核心数字逐段 → 日期（阈值带日期时才比较）→ fix 补丁级
-var _parseVersion = function(v) {
-  var s = String(v || '').trim().replace(/^v/i, '')
-  var m = /^(\d+(?:\.\d+)*)(?:RC\d+)?(?:-(\d{6}))?(-fix)?$/i.exec(s)
-  if (!m) return { nums: [], date: 0, hasDate: false, fix: 0, hasFix: false }
-  return {
-    nums: m[1].split('.').map(function(n) { return parseInt(n, 10) || 0 }),
-    date: m[2] ? parseInt(m[2], 10) : 0,
-    hasDate: m[2] !== undefined,
-    fix: m[3] ? 1 : 0,
-    hasFix: m[3] !== undefined
-  }
-}
-
-// v2 是阈值（停用版本）：阈值只写到版本号时（如 2.2.2），忽略日期与 fix，
-// 使 2.2.2-261030、1.2.3RC1 等版本号都不大于 2.2.2；阈值带日期时再按日期/fix 精确比较。
-var _compareVersion = function(v1, v2) {
-  var a = _parseVersion(v1)
-  var b = _parseVersion(v2)
-  var len = Math.max(a.nums.length, b.nums.length)
-  for (var i = 0; i < len; i++) {
-    var na = a.nums[i] || 0
-    var nb = b.nums[i] || 0
-    if (na > nb) return 1
-    if (na < nb) return -1
-  }
-  if (b.hasDate) {
-    if (a.date !== b.date) return a.date > b.date ? 1 : -1
-    if (a.fix !== b.fix) return a.fix > b.fix ? 1 : -1
-  }
-  return 0
-}
-
-// ========== 消息收集器 ==========
-// LX 文档硬性限制：updateAlert 每次运行脚本只能调用一次（官方 preload 再次调用直接 reject）。
-// 因此广播/定向通知/停用提示/更新日志/用户ID 全部先入队，最后合并为唯一一条弹窗。
-var _pendingMsgs = []
-// 本次运行是否已经发送过 updateAlert（官方限制每次运行只能弹一次）
-var _alertSent = false
-var _0x6b0b = function(text) {
-  if (!text) return
-  // 已弹过更新提示后不再入队：LX 不允许第二次 updateAlert，避免消息堆积
-  if (_alertSent) return
-  _pendingMsgs.push(String(text))
-}
-// 合并收集到的全部消息并只发送一次 updateAlert（总量截断 1024 字符）
-var _0x6b0c = function(updateUrl) {
-  if (_alertSent) {
-    _pendingMsgs = []
-    return false
-  }
-  if (_pendingMsgs.length === 0) return false
-  var log = _pendingMsgs.join('\n\n')
-  if (log.length > 1024) log = log.substring(0, 1024)
-  _pendingMsgs = []
-  // 无论成功与否都标记已发送：重复调用必然被官方拒绝，无需再次尝试
-  _alertSent = true
-  // 始终携带 updateUrl 字段（无更新地址时为空串）：与可正常弹窗的 v2.2.2 行为一致
-  var data = { log: log, updateUrl: updateUrl || '' }
-  if (typeof send !== 'function') {
-    _0x6b16('fail', '客户端不支持 updateAlert')
+    // 探测本身失败时放行，宁可交回请求档位也不额外降级
     return true
   }
-  try {
-    var ret = send(EVENT_NAMES.updateAlert, data)
-    // 投递结果回传面板，悬停「弹窗投递」可诊断客户端开关状态
-    if (ret && typeof ret.then === 'function') {
-      ret.then(function() {
-        _0x6b16('ok')
-      }, function(e) {
-        _0x6b16('fail', e && e.message ? e.message : e)
-      })
-    } else {
-      _0x6b16('ok')
-    }
-  } catch (e) {
-    _0x6b16('fail', e && e.message ? e.message : e)
+}
+
+const resolveMiguUrl = async (rawUrl, quality) => {
+  if (typeof rawUrl !== 'string' || !rawUrl) return rawUrl
+  const chain = MG_QUALITY_CHAIN[quality] || [quality]
+  let lastUrl = rawUrl
+  for (let i = 0; i < chain.length; i++) {
+    const url = rewriteMiguUrl(rawUrl, chain[i])
+    if (!url) continue
+    if (url === lastUrl && i > 0) continue          // 与上一档位结果相同，跳过重复探测
+    lastUrl = url
+    if (url === rawUrl) return url                  // 非咪咕 CDN，无法改写，直接返回
+    if (i === chain.length - 1) return url          // 兜底档位（128k）不再探测
+    if (await probePlayable(url)) return url
+    DEBUGLog('[mg] 档位不可用，降级重试:', chain[i], '->', chain[i + 1])
   }
-  return true
+  return lastUrl
 }
 
-// ========== 音质档位（统一 8 档）==========
-// 面板与音源共用同一组标识，顺序即音质高低：128k < 320k < flac < flac24bit < hires < atmos < atmos_plus < master
-var _QUALITYS = ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'atmos_plus', 'master']
-var _QUALITY_RANK = _QUALITYS.slice()
-// 各平台实际支持的音质（与赞助版/各接口能力对齐）
-var _PLATFORM_QUALITYS = {
-  tx: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'atmos_plus', 'master'],
-  wy: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'],
-  kg: ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'],
-  kw: ['128k', '320k', 'flac', 'flac24bit', 'hires'],
-  mg: ['128k', '320k', 'flac', 'flac24bit', 'hires'],
-}
-// 请求音质不在平台支持列表时，降级到该平台支持的最高可用档位
-var _normalizeQuality = function(source, quality) {
-  var list = _PLATFORM_QUALITYS[source] || _QUALITYS
-  var q = String(quality || '').toLowerCase()
-  if (q && list.indexOf(q) !== -1) return q
-  var idx = _QUALITY_RANK.indexOf(q)
-  if (idx < 0) return list[list.length - 1]
-  for (var i = idx - 1; i >= 0; i--) {
-    if (list.indexOf(_QUALITY_RANK[i]) !== -1) return _QUALITY_RANK[i]
-  }
-  return list[0]
-}
+// ==================== QQ音乐 后端接口列表（按优先级排列） ====================
 
-// ========== 版本停用 / 请求速度优先级（面板 check_update 下发）==========
-// 停用标志：命中精确停用清单或版本低于下限时置真，后续所有请求直接拒绝
-var _scriptDisabled = false
-// 不可用原因：停用/拉黑时写入，播放失败提示与更新弹窗均展示
-var _disabledReason = ''
-// 请求速度优先级：平台 => 按平均响应时间升序的接口名数组
-var _sourcePriority = {}
-// 按面板下发的速度优先级排序候选源（未记录的接口排尾；无数据保持原顺序）
-var _0x6b0a = function(candidates, source) {
-  var order = _sourcePriority ? _sourcePriority[source] : null
-  if (!order || order.length === 0) return candidates
-  var idx = {}
-  for (var i = 0; i < order.length; i++) idx[order[i]] = i
-  return candidates.slice().sort(function(a, b) {
-    var ia = idx[a.name] !== undefined ? idx[a.name] : 9999
-    var ib = idx[b.name] !== undefined ? idx[b.name] : 9999
-    return ia - ib
-  })
-}
+const TX_BACKENDS = [
 
-// 面板开关字段宽松判定：兼容 bool / 数字 / 字符串（"0"、"false" 视为关闭）
-var _isOn = function(v) {
-  if (v === true) return true
-  if (v === false || v === null || v === undefined) return false
-  if (typeof v === 'number') return v !== 0
-  var s = String(v).toLowerCase()
-  return s !== '' && s !== '0' && s !== 'false' && s !== 'off' && s !== 'no'
-}
-
-// 面板轮询状态：首次拉取后改用 no_notify=1，避免定时刷新吞掉管理员推送消息
-var _panelBusy = false
-var _panelPolled = false
-var _panelTimer = null
-var _panelRetried = false
-var _checkFailReported = false
-
-// 更新检查失败诊断：写入 alert_state，面板悬停可见（去重，避免轮询刷屏）
-var _0x6b18 = function(msg) {
-  if (_checkFailReported) return
-  _checkFailReported = true
-  _0x6b16('fail', _g(114) + String(msg || '').substring(0, 160))
-}
-
-// 首次检查失败时重试一次（8 秒后），规避启动期瞬时网络失败
-var _0x6b1d = function() {
-  if (_panelRetried) return
-  _panelRetried = true
-  if (typeof setTimeout !== 'function') return
-  setTimeout(function() {
-    try { _0x6b0d() } catch (e) {}
-  }, 8000)
-}
-
-// 拉取面板规则与通知（可重复执行：启动时一次，之后每 60 秒刷新一次）
-var _0x6b0d = function() {
-  if (!PANEL_REPORT_URL) return
-  if (_panelBusy) return
-  // 从 report.php 地址推导出 api.php 地址
-  var apiUrl = PANEL_REPORT_URL.replace(/\/report\.php.*$/, _g(83))
-  if (apiUrl === PANEL_REPORT_URL) return
-  // 附带用户标识与设备特征，便于面板统计、身份识别与定向下发
-  apiUrl += _g(88) + encodeURIComponent(_userId || '')
-  if (_clientType) apiUrl += '&client_type=' + encodeURIComponent(_clientType)
-  if (_cachedClientIp) apiUrl += '&client_ip=' + encodeURIComponent(_cachedClientIp)
-  if (_deviceFp) apiUrl += _g(106) + encodeURIComponent(_deviceFp)
-  // 上报本机音源版本，面板按该版本号判断是否停用（版本号不变，仅新增查询参数）
-  apiUrl += '&script_version=' + encodeURIComponent(SCRIPT_VERSION)
-  // 定时刷新只同步规则：不消费面板待推送消息，留给下次启动的首次拉取
-  if (_panelPolled) apiUrl += '&no_notify=1'
-  _panelBusy = true
-  _0x6a02(apiUrl, { method: 'GET', timeout: 5000 }).then(function(raw) {
-    _panelBusy = false
-    var body = raw
-    // 移动版部分客户端返回 JSON 字符串，需自行解析；解析失败直接跳过本次检查
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body) } catch (e) { body = null }
-    }
-    if (!body || typeof body !== 'object') {
-      _0x6b0f('[HeiMusic] 面板响应无法解析，跳过本次更新检查')
-      _0x6b18('面板响应无法解析')
-      _0x6b1d()
-      return
-    }
-    _panelPolled = true
-    _panelRetried = false
-    _checkFailReported = false
-    // 采纳面板发放的用户ID（按 IP + 客户端特征映射，跨启动稳定）
-    if (body.userId) _userId = String(body.userId)
-    // 面板「随更新提示展示用户ID」开关状态（用于失败提示兜底）
-    _pushUserIdOn = _isOn(body.push_user_id)
-    // 用户ID文案最先入队：合并日志超过 1024 字被截断时 ID 仍保留（v2.2.2-261030-fix）
-    if (_pushUserIdOn && _userId) {
-      _0x6b0b('你的用户ID：' + _userId + '\n（请勿泄露ID，在汇报问题时请带上此ID）')
-    }
-    // 版本停用判断：面板按上报的 SCRIPT_VERSION 判定为准；停用清单/下限为旧面板兜底。
-    // 停用清单每项均为「版本上限」：本机版本号小于等于该项即停用
-    // （如停用 2.2.2，则 1.1.1、2.2.1、1.2.3RC1、2.2.2-261030 全部停用）。
-    // 停用提示优先入队，避免被广播/通知挤占 1024 字截断后丢失
-    var disabled = body.disabled_versions
-    var isDisabled = body.disabled === true
-    if (!isDisabled && Object.prototype.toString.call(disabled) === '[object Array]') {
-      for (var dv = 0; dv < disabled.length; dv++) {
-        if (disabled[dv] && _compareVersion(SCRIPT_VERSION, disabled[dv]) <= 0) { isDisabled = true; break }
-      }
-    }
-    var below = body.disabled_below ? String(body.disabled_below) : ''
-    if (!isDisabled && below && _compareVersion(SCRIPT_VERSION, below) <= 0) isDisabled = true
-    if (isDisabled) {
-      _scriptDisabled = true
-      _disabledReason = '此版本已失效，请更新音源'
-      _0x6b0b(_disabledReason)
-    }
-    // 面板公告（广播）与定向通知 —— 先入队，最后统一弹出
-    _0x6b0b(body.broadcast)
-    _0x6b0b(body.notify)
-    // 按请求速度排序的接口优先级（v2.2.1+）
-    if (body.source_priority && typeof body.source_priority === 'object') {
-      _sourcePriority = body.source_priority
-    }
-    // 用户黑名单：命中后拒绝该用户所有请求，并推送提示
-    if (_isOn(body.blacklisted)) {
-      _scriptDisabled = true
-      var blacklistText = _blacklistErrorText(body)
-      _disabledReason = blacklistText || _g(104)
-      _0x6b0b(_disabledReason)
-    }
-    // 更新日志（停用状态只提示更新音源，同时附带面板配置的更新地址）
-    var updateUrl = ''
-    if (isDisabled) {
-      updateUrl = body.updateUrl || ''
-    } else if (body.version && _compareVersion(body.version, SCRIPT_VERSION) > 0) {
-      _0x6b0b(body.log || ('发现新版本 ' + body.version))
-      updateUrl = body.updateUrl || ''
-    }
-    // 唯一一次 updateAlert：合并广播/通知/停用/更新/用户ID
-    _0x6b0c(updateUrl)
-  }).catch(function(e) {
-    // 更新检查失败不影响正常使用；回传诊断并重试一次
-    _panelBusy = false
-    _0x6b0f('[HeiMusic] 更新检查失败：' + (e && e.message ? e.message : e))
-    _0x6b18(e && e.message ? e.message : e)
-    _0x6b1d()
-  })
-}
-
-// 每 60 秒轮询一次面板（±5 秒抖动），加快用户ID与规则下发刷新
-var _0x6b14 = function() {
-  if (typeof setTimeout !== 'function') return
-  // 测试环境不挂常驻定时器，由用例显式调用 refreshPanel
-  if (typeof globalThis !== 'undefined' && globalThis.__HM_TEST__) return
-  try { if (_panelTimer) clearTimeout(_panelTimer) } catch (e) {}
-  _panelTimer = setTimeout(function() {
-    try { _0x6b0d() } catch (e) {}
-    _0x6b14()
-  }, 55000 + Math.floor(Math.random() * 10000))
-}
-
-// 脚本初始化完成后发送 inited 事件告知应用
-// 官方约定：send(inited) 之前任何异常都会导致脚本初始化失败，
-// 因此先计算不依赖网络的本地标识（均 try/catch 兜底），再发送 inited；
-// IP 探测与面板检查等网络初始化全部放在 inited 之后
-try { _0x6b07() } catch (e) {}
-try { _0x6b12() } catch (e) {}
-try { _0x6b06() } catch (e) {}
-send(EVENT_NAMES.inited, {
-  sources: {
-    [_g(103)]: {
-      name: '酷我音乐',
-      type: 'music',
-      actions: [_g(98)],
-      qualitys: _PLATFORM_QUALITYS.kw,
-    },
-    [_g(99)]: {
-      name: '酷狗音乐',
-      type: 'music',
-      actions: [_g(98)],
-      qualitys: _PLATFORM_QUALITYS.kg,
-    },
-    [_g(100)]: {
-      name: 'QQ音乐',
-      type: 'music',
-      actions: [_g(98)],
-      qualitys: _PLATFORM_QUALITYS.tx,
-    },
-    [_g(102)]: {
-      name: '网易云音乐',
-      type: 'music',
-      actions: [_g(98)],
-      qualitys: _PLATFORM_QUALITYS.wy,
-    },
-    [_g(101)]: {
-      name: '咪咕音乐',
-      type: 'music',
-      actions: [_g(98)],
-      qualitys: _PLATFORM_QUALITYS.mg,
+  // === 主接口: 云记（海堂） music/resolve-url（取自云记音源，主备双线路） ===
+  {
+    name: '云记QQ(海堂)',
+    fetch: async (songmid, quality, musicInfo) => {
+      const mid = String(musicInfo?.songmid || musicInfo?.id || songmid || '')
+      if (!mid) throw new Error('云记QQ: 缺少歌曲ID')
+      const level = HTS_TX_LEVEL[quality]
+      if (!level) throw new Error('云记QQ: 不支持音质 ' + quality)
+      return await htsResolveUrl('tx', mid, level)
     },
   },
-})
-// 先完成公网 IP 探测，再同时发起 IP 上报与面板检查：
-// check_update 与 action=ip 使用同一个 client_ip，避免反代场景下所有用户落到代理 IP 而共享用户ID
-var _bootAfterIp = function() {
-  _ipReady = true
-  try { _0x6b15() } catch (e) {}
-  try { _0x6b0d() } catch (e) {}
-  try { _0x6b14() } catch (e) {}
-}
-var _bootIp = null
-try { _bootIp = _0x6b08() } catch (e) {}
-if (_bootIp && typeof _bootIp.then === 'function') _bootIp.then(_bootAfterIp, _bootAfterIp)
-else _bootAfterIp()
 
-// ===== 测试钩子（仅沙箱回归测试显式开启；LX 环境不定义 __HM_TEST__，自动跳过） =====
-if (typeof globalThis !== 'undefined' && globalThis.__HM_TEST__) {
-  globalThis.__hm_test = {
-    version: SCRIPT_VERSION,
-    API_SOURCES: _0x6b00,
-    isValidUrl: _0x6a04,
-    handleGetMusicUrl: _0x6b01,
-    fetchOiapiMigu: _0x6c12,
-    fetchKwMobi: _0x6c13,
-    fetchNianxinKw: _0x6c02,
-    fetchNianxinTx: _0x6c03,
-    fetchNianxinKg: _0x6c06,
-    normalizeUrl: _0x6a09,
-    normalizeQuality: _normalizeQuality,
-    QUALITYS: _QUALITYS,
-    PLATFORM_QUALITYS: _PLATFORM_QUALITYS,
-    sortByPriority: function(c, s) { return _0x6b0a(c, s) },
-    setPriority: function(p) { _sourcePriority = p },
-    isDisabled: function() { return _scriptDisabled },
-    handleReportResponse: _0x6b13,
-    getUserId: function() { return _userId },
-    getDeviceFp: function() { return _deviceFp },
-    refreshPanel: _0x6b0d,
-    compareVersion: _compareVersion,
-    reportIp: _0x6b15,
-    isSourceCooling: _0x6b1a,
-    markSourceHealth: _0x6b1b,
-    raceCandidates: _0x6b02,
-    hasAlertSent: function() { return _alertSent },
-    isPushIdOn: _isOn,
+  // === 备用接口: baimusic QQ（原主接口，降级为备用） ===
+  {
+    name: 'baimusic QQ',
+    fetch: async (songmid, quality, musicInfo) => {
+      const mid = String(musicInfo?.songmid ?? '')
+      if (!mid) throw new Error('baimusic QQ: 缺少歌曲ID')
+      const q = quality === 'hires' ? 'flac24bit' : quality
+      const plain = JSON.stringify({ mid: mid, quality: q })
+      const enc = _magicAesEncrypt(plain)
+      const sig = _hmacSha256Hex(_HMAC_KEY, _utf8Encode(enc))
+      const res = await httpFetch('http://106.55.0.102/baimusic/qqhoturl.php', {
+        method: 'POST', timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 15; V2453A Build/AP3A.240905.015.A2_V000L1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.5 Mobile Safari/537.36',
+          'Accept': '*/*',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+          'Content-Type': 'application/octet-stream',
+          'X-Sig': sig,
+        },
+        body: enc,
+      })
+      const d = res.body
+      if (!d || typeof d !== 'object' || !d.d) {
+        throw new Error('baimusic QQ: 响应缺少d字段' + (d?.error ? ': ' + d.error : ''))
+      }
+      const dec = JSON.parse(_rc4Decrypt(d.d))
+      if (!dec.url) throw new Error('baimusic QQ: ' + (dec.error || '获取URL失败'))
+      return dec.url
+    },
+  },
+]
+
+// ==================== 网易云音乐 后端接口列表（按优先级排列） ====================
+
+const WY_BACKENDS = [
+
+  // === 前端1: ikun音源API（c.wwwweb.top，取自ikun音源v26） ===
+  { name: 'ikun网易云', fetch: async (songmid, quality, musicInfo) => {
+      const songId = musicInfo?.hash ?? songmid
+      const res = await httpFetch('https://c.wwwweb.top/music/url', {
+        method: 'POST', timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'lx-music-request/2.9.0',
+          'X-Api-Key': '',
+        },
+        body: { source: 'wy', musicId: songId, quality: quality },
+        follow_max: 5,
+      })
+      const d = res.body
+      if (!d || isNaN(Number(d.code))) throw new Error('ikun网易云: 未知错误')
+      if (d.code === 200 && d.url) return d.url
+      if (d.code === 403) throw new Error('ikun网易云: 鉴权失败')
+      if (d.code === 429) throw new Error('ikun网易云: 请求过速')
+      throw new Error('ikun网易云: ' + (d.message || '获取URL失败'))
+    },
+  },
+]
+
+// ==================== 酷我音乐(kw) 后端接口列表（按优先级排列） ====================
+
+const KW_BACKENDS = [
+
+  // === 后端1: 酷我流媒体直链（175.27.166.236:8928，返回二进制音频流，取自酷我流媒体音源） ===
+  // 注：该服务器atmos/atmos_plus/master返回200，其他音质返回400，但URL本身即为可播放地址，无需验证
+  {
+    name: '酷我流媒体',
+    fetch: async (songmid, quality, musicInfo) => {
+      const level = KW_STREAM_LEVEL_MAP[quality] || 'master'
+      const songIdTmp = musicInfo?.songmid || musicInfo?.id || musicInfo?.hash || musicInfo?.songId || musicInfo?.musicId || songmid
+      if (!songIdTmp) throw new Error('酷我流媒体: 找不到歌曲ID')
+      const songId = String(songIdTmp).trim()
+      // 该URL返回二进制音频流，URL本身即为可播放地址，直接返回无需验证
+      return 'http://175.27.166.236:8928/kwstream?id=' + encodeURIComponent(songId) + '&level=' + level + '&stream=1'
+    },
+  },
+
+  // === 后端2: Hello World KW 主API（musicserver.haitangw.cc，取自Hello World 260822） ===
+  {
+    name: 'HelloWorld KW 主API',
+    fetch: async (songmid, quality, musicInfo) => {
+      const hash = musicInfo?.hash || musicInfo?.songmid || musicInfo?.rid || musicInfo?.id || songmid
+      if (!hash) throw new Error('HelloWorld KW 主API: 找不到歌曲ID')
+      const levelMap = { atmos: 'atmos', atmos_plus: 'atmos_plus', master: 'master' }
+      const level = levelMap[quality]
+      if (!level) throw new Error('HelloWorld KW 主API: 不支持音质')
+      const res = await httpFetch('https://musicserver.haitangw.cc/v1/music/resolve-url', {
+        method: 'POST', timeout: 10000,
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        body: { source: 'kw', rid: hash, level: level },
+      })
+      const d = res.body
+      if (d?.data?.url) return d.data.url
+      throw new Error('HelloWorld KW 主API: 无数据')
+    },
+  },
+
+  // === 后端3: Hello World KW 备用API（c.wwwweb.top，取自Hello World 260822，与WY同源） ===
+  {
+    name: 'HelloWorld KW 备用API',
+    fetch: async (songmid, quality, musicInfo) => {
+      const hash = musicInfo?.hash || musicInfo?.songmid || musicInfo?.rid || musicInfo?.id || songmid
+      if (!hash) throw new Error('HelloWorld KW 备用API: 找不到歌曲ID')
+      const qMap = { '128k': '128k', '320k': '320k', flac: 'flac', flac24bit: 'flac24bit', hires: 'hires' }
+      const q = qMap[quality]
+      if (!q) throw new Error('HelloWorld KW 备用API: 不支持音质')
+      const res = await httpFetch('https://c.wwwweb.top/music/url', {
+        method: 'POST', timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'lx-music-desktop/2.10.1',
+          'X-Api-Key': '',
+        },
+        body: { source: 'kw', musicId: hash, quality: q },
+        follow_max: 5,
+      })
+      const d = res.body
+      if (!d || isNaN(Number(d.code))) throw new Error('HelloWorld KW 备用API: 未知错误')
+      if (d.code === 200 && d.url) return d.url
+      if (d.code === 403) throw new Error('HelloWorld KW 备用API: 鉴权失败')
+      if (d.code === 429) throw new Error('HelloWorld KW 备用API: 请求过速')
+      throw new Error('HelloWorld KW 备用API: ' + (d.message || '获取URL失败'))
+    },
+  },
+]
+
+// ==================== 酷狗音乐(kg) 后端接口列表（按优先级排列） ====================
+
+const KG_BACKENDS = [
+
+  // === 后端1: 海堂KG（musicserver.haitangw.cc，取自Hello World 260822，POST请求） ===
+  {
+    name: '海堂KG',
+    fetch: async (songmid, quality, musicInfo) => {
+      const hash = musicInfo?.hash || musicInfo?.songmid || musicInfo?.id || songmid
+      if (!hash) throw new Error('海堂KG: 找不到歌曲ID')
+      const levelMap = { '128k': 'standard', '320k': 'exhigh', flac: 'lossless', hires: 'hires', atmos: 'atmos', master: 'clear' }
+      const level = levelMap[quality]
+      if (!level) throw new Error('海堂KG: 不支持音质')
+      const res = await httpFetch('https://musicserver.haitangw.cc/v1/music/resolve-url', {
+        method: 'POST', timeout: 10000,
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        body: { source: 'kg', rid: hash, level: level },
+      })
+      const d = res.body
+      if (d?.data?.url) return d.data.url
+      throw new Error('海堂KG: 无数据')
+    },
+  },
+
+  // === 后端2: 白姬KG（103.79.184.97，取自Hello World 260822） ===
+  {
+    name: '白姬KG',
+    fetch: async (songmid, quality, musicInfo) => {
+      const id = musicInfo?.hash || musicInfo?.songmid || musicInfo?.id || songmid
+      if (!id) throw new Error('白姬KG: 找不到歌曲ID')
+      const qMap = { '128k': '128k', '320k': '320k', flac: 'flac' }
+      const q = qMap[quality]
+      if (!q) throw new Error('白姬KG: 不支持音质')
+      const url = 'http://103.79.184.97/api/music/url?source=kg&songId={id}&quality={quality}&key=MOLAN-BAIJI'
+        .replace('{id}', encodeURIComponent(id))
+        .replace('{quality}', encodeURIComponent(q))
+      const res = await httpFetch(url, {
+        method: 'GET', timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0', 'X-Card-Key': 'MOLAN-BAIJI' },
+      })
+      const d = res.body
+      if (d && d.url) return d.url
+      if (d && d.data && d.data.url) return d.data.url
+      throw new Error('白姬KG: 无数据')
+    },
+  },
+
+  // === 后端3: 星海KG（yy.zddyr.top，取自Hello World 260822） ===
+  {
+    name: '星海KG',
+    fetch: async (songmid, quality, musicInfo) => {
+      const id = musicInfo?.hash || musicInfo?.songmid || musicInfo?.id || songmid
+      if (!id) throw new Error('星海KG: 找不到歌曲ID')
+      const qMap = { '128k': '128k', '320k': '320k', flac: 'flac', hires: 'hires', atmos: 'atmos', master: 'master' }
+      const q = qMap[quality]
+      if (!q) throw new Error('星海KG: 不支持音质')
+      const url = 'https://yy.zddyr.top/lx/api/?source=kg&quality={quality}&mainHash={id}'
+        .replace('{id}', encodeURIComponent(id))
+        .replace('{quality}', encodeURIComponent(q))
+      const res = await httpFetch(url, {
+        method: 'GET', timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
+      const d = res.body
+      if (d?.url) return d.url
+      throw new Error('星海KG: ' + (d?.msg || '无数据'))
+    },
+  },
+]
+
+// ==================== 咪咕音乐(mg) 后端接口列表（按优先级排列） ====================
+
+const MG_BACKENDS = [
+
+  // === 主接口: 云记（海堂）音乐接口 + 音质路径改写（取自云记音源） ===
+  {
+    name: '云记咪咕(海堂)',
+    fetch: async (songmid, quality, musicInfo) => {
+      const rid = String(musicInfo?.songmid || musicInfo?.id || songmid || '')
+      if (!rid) throw new Error('云记咪咕: 缺少歌曲ID')
+      // 云记固定以 standard 解析，再按面板音质改写 CDN 路径
+      const rawUrl = await htsResolveUrl('mg', rid, 'standard')
+      return await resolveMiguUrl(rawUrl, quality)
+    },
+  },
+
+  // === 备用1: 星海音乐源主后端（yy.zddyr.top，原主接口，降级为备用） ===
+  {
+    name: '星海主后端',
+    fetch: async (songmid, quality) => {
+      const res = await httpFetch('https://yy.zddyr.top/lx/api/?source=migu&songmid=' + songmid + '&quality=' + quality, {
+        method: 'GET', timeout: 8000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
+      const d = res.body
+      if (d && d.code === 200 && d.url) {
+        // 星海咪咕同样只回 128k 链接，沿用云记的路径改写把音质提上去
+        return await resolveMiguUrl(d.url, quality)
+      }
+      throw new Error('星海主后端: ' + (d?.msg || '无数据'))
+    },
+  },
+]
+
+// ==================== 汽水音乐(qs) 后端接口列表（取自星海音乐源） ====================
+
+const createXinghaiQsBackend = (name, host) => ({
+  name: name,
+  fetch: async (songmid, quality, musicInfo) => {
+    const id = String(musicInfo?.songmid || musicInfo?.id || songmid || '')
+    if (!id) throw new Error(name + ': 缺少歌曲ID')
+    const params = {
+      source: 'qs',
+      name: musicInfo?.name || '',
+      singer: musicInfo?.singer || '',
+      songmid: id,
+      interval: musicInfo?.interval || '',
+      albumName: musicInfo?.albumName || musicInfo?.album || '',
+      quality: quality || '',
+    }
+    const query = Object.keys(params)
+      .map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+      .join('&')
+    const res = await httpFetch('https://' + host + '/lx/api/?' + query, {
+      method: 'GET', timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0', 'X-Client': 'XingHaiMusicSource' },
+    })
+    const d = res.body
+    if (!d || Number(d.code) !== 200) {
+      throw new Error(name + ': ' + ((d && d.msg) || '接口无数据'))
+    }
+    const data = d.data || {}
+    let streamUrl = data.url || ''
+    // 汽水为抖音加密流，需把 key 拼到链接上
+    if (streamUrl && data.key && !/[?&]key=/.test(streamUrl)) {
+      streamUrl += (streamUrl.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(data.key)
+    }
+    if (!streamUrl) streamUrl = data.source_url || ''
+    if (!streamUrl) throw new Error(name + ': 未返回流媒体链接')
+    return streamUrl
+  },
+})
+
+const QS_BACKENDS = [
+  createXinghaiQsBackend('星海汽水主线路', 'yy.zddyr.top'),
+  createXinghaiQsBackend('星海汽水备用线路', 'zrcdy.dpdns.org'),
+]
+
+// ==================== URL 缓存 + 限流（仿照云记） ====================
+
+const URL_CACHE = new Map()      // key -> { url, expire }
+const INFLIGHT = new Map()       // key -> Promise，同一首歌并发请求合并
+const requestTimeList = []       // 滑动窗口内的请求时间戳
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// 滑动窗口限流：窗口已满时先排队等待，等待超过上限才抛错（云记策略为直接抛错，这里加了短排队提升体验）
+const acquireRateSlot = async () => {
+  const deadline = Date.now() + RATE_LIMIT_MAX_WAIT
+  for (;;) {
+    const now = Date.now()
+    while (requestTimeList.length > 0 && now - requestTimeList[0] >= RATE_LIMIT_WINDOW) {
+      requestTimeList.shift()
+    }
+    if (requestTimeList.length < RATE_LIMIT_MAX) {
+      requestTimeList.push(now)
+      return
+    }
+    const wait = RATE_LIMIT_WINDOW - (now - requestTimeList[0]) + 10
+    if (Date.now() + wait > deadline) {
+      throw new Error('请求过于频繁，限制' + RATE_LIMIT_MAX + '次/' + (RATE_LIMIT_WINDOW / 1000) + '秒，请稍后重试')
+    }
+    DEBUGLog('[限流] 窗口已满，等待', wait, 'ms')
+    await sleep(wait)
   }
 }
-})()
+
+const pruneCache = () => {
+  const now = Date.now()
+  for (const [key, val] of URL_CACHE) {
+    if (val.expire <= now) URL_CACHE.delete(key)
+  }
+  while (URL_CACHE.size > CACHE_MAX_ENTRIES) {
+    const oldest = URL_CACHE.keys().next()
+    if (oldest.done) break
+    URL_CACHE.delete(oldest.value)
+  }
+}
+
+const withUrlCache = async (cacheKey, loader) => {
+  const now = Date.now()
+  const cached = URL_CACHE.get(cacheKey)
+  if (cached) {
+    if (cached.expire > now) {
+      DEBUGLog('[缓存命中]', cacheKey, '剩余', Math.round((cached.expire - now) / 1000) + 's')
+      return cached.url
+    }
+    URL_CACHE.delete(cacheKey)
+  }
+
+  const pending = INFLIGHT.get(cacheKey)
+  if (pending) {
+    DEBUGLog('[合并请求]', cacheKey)
+    return pending
+  }
+
+  const task = (async () => {
+    await acquireRateSlot()          // 仅缓存未命中时占用限流额度
+    const url = await loader()
+    URL_CACHE.set(cacheKey, { url: url, expire: Date.now() + CACHE_TTL })
+    if (URL_CACHE.size > CACHE_MAX_ENTRIES) pruneCache()
+    return url
+  })()
+
+  INFLIGHT.set(cacheKey, task)
+  try {
+    return await task
+  } finally {
+    INFLIGHT.delete(cacheKey)
+  }
+}
+
+// ==================== 获取音乐URL（缓存 + 限流 + 多后端轮询） ====================
+
+const handleGetMusicUrl = async (source, musicInfo, quality) => {
+  const songId = musicInfo?.hash ?? musicInfo?.songmid ?? musicInfo?.id
+  if (!songId) throw new Error('无法获取歌曲ID')
+
+  let backends = {
+    tx: TX_BACKENDS,
+    wy: WY_BACKENDS,
+    kw: KW_BACKENDS,
+    kg: KG_BACKENDS,
+    mg: MG_BACKENDS,
+    qs: QS_BACKENDS,
+  }[source]
+
+  if (!backends) throw new Error('未知音源: ' + source)
+
+  // 酷我音乐：高音质（atmos/atmos_plus/master）走流媒体直链，普通音质走星海等其他后端
+  if (source === 'kw') {
+    const highQuality = ['atmos', 'atmos_plus', 'master']
+    if (highQuality.includes(quality)) {
+      // 高音质只走酷我流媒体（索引0），不做降级
+      backends = [backends[0]]
+    } else {
+      // 普通音质跳过酷我流媒体（索引0），走星海等其他后端
+      backends = backends.filter((_, i) => i !== 0)
+    }
+  }
+
+  const cacheKey = source + '-' + songId + '-' + quality
+
+  return withUrlCache(cacheKey, async () => {
+    const errors = []
+
+    for (const backend of backends) {
+      try {
+        console.log('[' + source + '] 尝试后端: ' + backend.name + ' ID: ' + songId + ' 音质: ' + quality)
+        const url = await backend.fetch(songId, quality, musicInfo)
+        if (url) {
+          console.log('[' + source + '] ' + backend.name + ' 成功')
+          return url
+        }
+      } catch (e) {
+        errors.push(backend.name + ': ' + e.message)
+        console.log('[' + source + '] ' + backend.name + ' 失败: ' + e.message)
+      }
+    }
+
+    throw new Error('所有后端均失败（共' + backends.length + '个）\n' + errors.join('\n'))
+  })
+}
+
+// ==================== 注册请求事件 ====================
+
+on(EVENT_NAMES.request, ({ action, source, info }) => {
+  switch (action) {
+    case 'musicUrl':
+      return handleGetMusicUrl(source, info.musicInfo, info.type)
+        .then((data) => Promise.resolve(data))
+        .catch((err) => Promise.reject(err))
+    default:
+      return Promise.reject('action not support: ' + action)
+  }
+})
+
+// ==================== 初始化音源 ====================
+
+const musicSources = {}
+MUSIC_SOURCE.forEach((item) => {
+  const nameMap = {
+    tx: 'QQ音乐',
+    wy: '网易云音乐',
+    kw: '酷我音乐',
+    kg: '酷狗音乐',
+    mg: '咪咕音乐',
+    qs: '汽水音乐',
+  }
+  musicSources[item] = {
+    name: nameMap[item] || item,
+    type: 'music',
+    actions: ['musicUrl'],
+    qualitys: MUSIC_QUALITY[item],
+  }
+})
+
+send(EVENT_NAMES.inited, {
+  status: true,
+  openDevTools: false,
+  sources: musicSources,
+})
+
+console.log('[墨澜聚合音源 v2.4.0] 已加载完成')
+console.log('[QQ音乐] 后端数: ' + TX_BACKENDS.length + '（主: 云记）' + ' Cookie: ' + (HAS_TX_COOKIE ? '已配置' : '未配置'))
+console.log('[网易云音乐] 后端数: ' + WY_BACKENDS.length + ' Cookie: ' + (HAS_WY_COOKIE ? '已配置' : '未配置'))
+console.log('[酷我音乐] 后端数: ' + KW_BACKENDS.length)
+console.log('[酷狗音乐] 后端数: ' + KG_BACKENDS.length)
+console.log('[咪咕音乐] 后端数: ' + MG_BACKENDS.length + '（主: 云记）')
+console.log('[汽水音乐] 后端数: ' + QS_BACKENDS.length)
+console.log('[缓存/限流] 缓存 ' + (CACHE_TTL / 60000) + ' 分钟 | 限流 ' + RATE_LIMIT_MAX + ' 次/' + (RATE_LIMIT_WINDOW / 1000) + ' 秒')
